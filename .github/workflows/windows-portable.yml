@@ -42,6 +42,12 @@ jobs:
           Expand-Archive -Path "$env:RUNNER_TEMP\postgres.zip" -DestinationPath "$env:RUNNER_TEMP\postgres"
           New-Item -ItemType Directory -Force -Path "build-resources\postgres" | Out-Null
           Copy-Item "$env:RUNNER_TEMP\postgres\pgsql\*" "build-resources\postgres" -Recurse -Force
+      - name: Download bundled Node.js runtime
+        shell: pwsh
+        run: |
+          $url = "https://nodejs.org/dist/v22.23.4/win-x64/node.exe"
+          New-Item -ItemType Directory -Force -Path "build-resources\\node" | Out-Null
+          Invoke-WebRequest -Uri $url -OutFile "build-resources\\node\\node.exe"
       - name: Package portable Windows executable
         run: npm run package:windows
       - name: Upload portable executable
