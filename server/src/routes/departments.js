@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
 export const departmentsRouter=Router();
-departmentsRouter.use(requireAuth,requirePermission('departments.read'));
-departmentsRouter.get('/',async(_req,res,next)=>{try{const items=await prisma.department.findMany({where:req.user.permissions?.includes('departments.manage')||req.user.role==='SUPER_ADMIN'?{}:{isActive:true},orderBy:{nameAr:'asc'},select:{id:true,code:true,nameAr:true,nameEn:true,isActive:true,_count:{select:{doctors:true,patients:true}}}});res.json({items});}catch(error){next(error);}});
+departmentsRouter.use(requireAuth);
+departmentsRouter.get('/',requirePermission('departments.read'),async(_req,res,next)=>{try{const items=await prisma.department.findMany({where:req.user.permissions?.includes('departments.manage')||req.user.role==='SUPER_ADMIN'?{}:{isActive:true},orderBy:{nameAr:'asc'},select:{id:true,code:true,nameAr:true,nameEn:true,isActive:true,_count:{select:{doctors:true,patients:true}}}});res.json({items});}catch(error){next(error);}});
 
 departmentsRouter.post('/',requirePermission('departments.manage'),async(req,res,next)=>{try{
  const p=z.object({code:z.string().trim().min(2).max(30).regex(/^[A-Za-z0-9_-]+$/),nameAr:z.string().trim().min(2).max(120),nameEn:z.string().trim().min(2).max(120)}).strict().safeParse(req.body);

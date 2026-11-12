@@ -60,3 +60,7 @@ Added department creation and update/deactivation endpoints behind `departments.
 
 ## Department administration UI increment
 Added a bilingual department management screen with create/edit and activation controls. The API now returns the activation state for authorized managers. CI pending.
+
+
+## Department permission test failure and correction
+CI showed the authorized department update returned 403 because the router applied `departments.read` globally before the route-level `departments.manage` check. The router now applies authentication globally, `departments.read` only to GET, and `departments.manage` to write routes. Rerun CI required.

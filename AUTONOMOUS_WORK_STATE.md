@@ -26,7 +26,7 @@ Inventory movement history API and batch count/movement UI added; CI pending on 
 Department create/update/deactivate API with `departments.manage`, validation, duplicate-code handling, audit events and integration coverage. Commit `dd7ad0a4c632199c77f22e52c2eee762f8194cc0`; its CI result is being checked.
 
 ## Current active task
-Department administration UI for creating, editing, activating/deactivating departments, and showing doctor/patient counts.
+Fix department permission layering exposed by CI: management endpoints should require `departments.manage` without also forcing `departments.read`; keep the read permission on GET only. Then rerun backend tests.
 
 ## Pending tasks (priority order)
 1. Verify the patient profile editing increment through GitHub Actions; fix any build/test failure.

@@ -25,3 +25,5 @@ All notable project increments are recorded here.
 - Added department create/update/deactivate API with normalized unique codes, strict validation, dedicated `departments.manage` permission and audit records; added integration coverage for permission enforcement and update.
 
 - Added department administration UI for create/edit/activate/deactivate with live API integration and permission-gated controls.
+
+- Corrected department route permission layering so users with `departments.manage` can write without an unnecessary `departments.read` grant; GET remains protected by `departments.read`.
