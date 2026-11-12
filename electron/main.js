@@ -192,12 +192,19 @@ async function startDatabase() {
 }
 
 async function startApi(databaseUrl) {
+  // Prisma's Windows platform detector uses the process temporary directory.
+  // Use an app-owned writable folder instead of inheriting a possibly inaccessible
+  // TEMP/TMP path from a launcher, service account, or elevated process.
+  const runtimeTemp = path.join(userData, 'tmp');
+  fs.mkdirSync(runtimeTemp, { recursive: true });
   const env = {
     NODE_ENV: 'production',
     PORT: String(port),
     DATABASE_URL: databaseUrl,
     JWT_ACCESS_SECRET: randomBytes(48).toString('hex'),
-    CORS_ORIGIN: 'http://127.0.0.1:' + port
+    CORS_ORIGIN: 'http://127.0.0.1:' + port,
+    TEMP: runtimeTemp,
+    TMP: runtimeTemp
   };
   await setStatus('Preparing the hospital database…', 'Applying database updates.');
   await runNodeScript(path.join(serverRoot, 'node_modules', 'prisma', 'build', 'index.js'), ['migrate', 'deploy'], env);
