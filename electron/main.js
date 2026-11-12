@@ -94,16 +94,30 @@ async function waitForDatabase(psql, password, env) {
       throw new Error('The PostgreSQL process exited before the database became ready. See startup.log.');
     }
     try {
-      // pg_isready only reports server availability; it does not validate credentials.
-      // Run a real SQL query so startup cannot continue with a rejected password.
+      const connectionEnv = { env: { ...env, PGPASSWORD: password } };
+      // initdb creates the maintenance database "postgres", not an application
+      // database named after the superuser. Create hms once, without dropping data.
+      const databaseExists = await runBinary(psql, [
+        '-w', '-h', '127.0.0.1', '-p', '55432', '-U', 'hms', '-d', 'postgres',
+        '-v', 'ON_ERROR_STOP=1', '-A', '-t', '-c', "SELECT 1 FROM pg_database WHERE datname = 'hms'"
+      ], connectionEnv);
+      if (databaseExists.trim() !== '1') {
+        await runBinary(psql, [
+          '-w', '-h', '127.0.0.1', '-p', '55432', '-U', 'hms', '-d', 'postgres',
+          '-v', 'ON_ERROR_STOP=1', '-c', 'CREATE DATABASE hms OWNER hms'
+        ], connectionEnv);
+        log('INFO', 'Created the application database when it was not already present.');
+      }
+      // pg_isready only reports server availability; this verifies credentials
+      // and the exact database used by Prisma with a real SQL query.
       const output = await runBinary(psql, [
         '-w', '-h', '127.0.0.1', '-p', '55432', '-U', 'hms', '-d', 'hms',
         '-v', 'ON_ERROR_STOP=1', '-A', '-t', '-c', 'SELECT 1'
-      ], { env: { ...env, PGPASSWORD: password } });
+      ], connectionEnv);
       if (output.trim() !== '1') {
         throw new Error('PostgreSQL authenticated probe returned an unexpected result.');
       }
-      log('INFO', 'Local PostgreSQL authenticated query succeeded.');
+      log('INFO', 'Local PostgreSQL authenticated query to the hms database succeeded.');
       return;
     } catch (error) {
       if (attempt === 0 || (attempt + 1) % 15 === 0) {
