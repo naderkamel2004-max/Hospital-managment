@@ -55,14 +55,20 @@ jobs:
           Invoke-WebRequest -Uri $url -OutFile "build-resources\\node\\node.exe"
       - name: Package portable Windows executable
         run: npm run package:windows
-      - name: Smoke test packaged Windows application
+      - name: Smoke test packaged Windows application as a standard Windows user
         shell: pwsh
         run: |
-          $app = Resolve-Path "dist-electron\win-unpacked\Hospital Management.exe"
-          $testData = Join-Path $env:RUNNER_TEMP "hms-portable-smoke-test"
-          $env:HMS_TEST_USER_DATA = $testData
-          $process = Start-Process -FilePath $app.Path -ArgumentList "--disable-gpu" -PassThru
+          $app = (Resolve-Path "dist-electron\win-unpacked\Hospital Management.exe").Path
+          $testUser = "hms-smoke"
+          $testPassword = ConvertTo-SecureString ("HmsSmoke!" + [guid]::NewGuid().ToString("N")) -AsPlainText -Force
+          New-LocalUser -Name $testUser -Password $testPassword -AccountNeverExpires -PasswordNeverExpires | Out-Null
+          $credential = [System.Management.Automation.PSCredential]::new("$env:COMPUTERNAME\$testUser", $testPassword)
+          $testProfile = Join-Path $env:SystemDrive "Users\$testUser"
+          $testData = Join-Path $testProfile "AppData\Roaming\Hospital Management"
+          New-Item -ItemType Directory -Force -Path $testData | Out-Null
+          $process = $null
           try {
+            $process = Start-Process -FilePath $app -ArgumentList "--disable-gpu" -Credential $credential -LoadUserProfile -PassThru
             $deadline = (Get-Date).AddMinutes(4)
             $healthy = $false
             while ((Get-Date) -lt $deadline) {
@@ -90,11 +96,12 @@ jobs:
               if (Test-Path $log) { Get-Content $log | Write-Host }
               throw "Hospital Management did not become healthy within four minutes."
             }
-            Write-Host "Windows packaged-app smoke test passed: /api/health returned status=ok."
+            Write-Host "Windows packaged-app smoke test passed under a standard non-administrator account: /api/health returned status=ok."
           } finally {
-            if (-not $process.HasExited) {
+            if ($process -and -not $process.HasExited) {
               & taskkill.exe /PID $process.Id /T /F | Out-Null
             }
+            Remove-LocalUser -Name $testUser -ErrorAction SilentlyContinue
           }
       - name: Upload portable executable
         uses: actions/upload-artifact@v4
