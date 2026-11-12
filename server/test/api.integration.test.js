@@ -102,6 +102,7 @@ test('login, live permission revocation, and account lockout are enforced', asyn
   await request(app).patch('/api/operations/' + createdOperationId + '/status').set('Authorization', 'Bearer ' + accessToken).send({ status: 'CANCELLED' }).expect(200);
   currentStock = await prisma.stockItem.findUnique({ where: { id: stockItem.id }});
   assert.equal(Number(currentStock.quantity), 5);
+  await request(app).post('/api/operations').set('Authorization', 'Bearer ' + accessToken).send({ operationNo: 'CI-MANUAL-' + suffix, patientId: patient.id, doctorId: doctor.id, operationTypeId: operationType.id, scheduledAt: new Date().toISOString(), items: [{ itemName: 'Uncatalogued item', category: 'OTHER', unit: 'piece', quantity: 1, purchaseUnitPrice: 999 }] }).expect(403);
   const movements = await prisma.stockMovement.findMany({ where: { referenceId: createdOperationId }});
   assert.equal(movements.length, 2);
   assert.deepEqual(movements.map(x => x.movementType).sort(), ['OPERATION_CANCELLATION', 'OPERATION_CONSUMPTION']);

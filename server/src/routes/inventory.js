@@ -14,6 +14,7 @@ inventoryRouter.get('/products',requirePermission('inventory.read'),async(req,re
 inventoryRouter.post('/products',requirePermission('inventory.manage'),async(req,res,next)=>{try{
  const p=z.object({sku:z.string().trim().min(1).max(50),nameAr:z.string().trim().min(1).max(160),nameEn:z.string().trim().min(1).max(160),category:z.enum(['MEDICATION','CONSUMABLE','OTHER']),unit:z.string().trim().min(1).max(30),purchasePrice:z.coerce.number().nonnegative(),sellingPrice:z.coerce.number().nonnegative().nullable().optional(),reorderLevel:z.coerce.number().nonnegative().default(0)}).safeParse(req.body);
  if(!p.success)return res.status(400).json({error:'Invalid product data',details:p.error.flatten()});
+ if(!canReadInventoryCosts(req.user)&&req.user.role!=='SUPER_ADMIN'&&(Number(p.data.purchasePrice)>0||p.data.sellingPrice!=null))return res.status(403).json({error:'Cost-entry permission required'});
  const item=await prisma.product.create({data:p.data});
  await prisma.auditLog.create({data:{userId:req.user.id,action:'PRODUCT_CREATED',entity:'Product',entityId:item.id,ipAddress:req.ip,afterData:p.data}});
  res.status(201).json({item:protectProduct(item,canReadInventoryCosts(req.user))});
