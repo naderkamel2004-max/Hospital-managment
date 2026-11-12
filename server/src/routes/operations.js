@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
+import { operationScopeWhere, combineWhere } from '../lib/access-scopes.js';
 
 export const operationsRouter=Router();
 operationsRouter.use(requireAuth);
@@ -55,13 +56,8 @@ operationsRouter.get('/',requirePermission('operations.read'),async(req,res,next
  if(typeof req.query.doctorId==='string')where.doctorId=req.query.doctorId;
  if(typeof req.query.patientId==='string')where.patientId=req.query.patientId;
  if(typeof req.query.operationTypeId==='string')where.operationTypeId=req.query.operationTypeId;
- if(req.user.role!=='SUPER_ADMIN'){
-  const doctorScopes=req.user.scopes.filter(x=>x.resource==='doctor').map(x=>x.resourceId);
-  const patientScopes=req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId);
-  if(doctorScopes.length)where.doctorId={in:doctorScopes};
-  if(patientScopes.length)where.patientId={in:patientScopes};
- }
- const items=await prisma.operation.findMany({where,include,orderBy:{scheduledAt:'desc'},take:500});
+ const scopedWhere=combineWhere(where,operationScopeWhere(req.user));
+ const items=await prisma.operation.findMany({where:scopedWhere,include,orderBy:{scheduledAt:'desc'},take:500});
  res.json({items:items.map(item=>protectCosts(item,canReadCosts(req.user)))});
 }catch(error){next(error);}});
 operationsRouter.get('/analytics',requirePermission('operations.read'),async(req,res,next)=>{try{
@@ -77,7 +73,7 @@ operationsRouter.get('/analytics',requirePermission('operations.read'),async(req
   if(doctorScopes.length)where.doctorId={in:doctorScopes};
   if(patientScopes.length)where.patientId={in:patientScopes};
  }
- const rows=await prisma.operation.findMany({where,select:{id:true,scheduledAt:true,totalCost:true,consumablesCost:true,medicationsCost:true,doctor:{select:{id:true,fullName:true}},operationType:{select:{id:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}},items:{select:{itemNameSnapshot:true,quantity:true,lineCost:true}}},take:10000});
+ const rows=await prisma.operation.findMany({where:scopedWhere,select:{id:true,scheduledAt:true,totalCost:true,consumablesCost:true,medicationsCost:true,doctor:{select:{id:true,fullName:true}},operationType:{select:{id:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}},items:{select:{itemNameSnapshot:true,quantity:true,lineCost:true}}},take:10000});
  const byMonth=new Map(),byType=new Map(),byDoctor=new Map(),byItem=new Map();
  let totalCost=0,consumablesCost=0,medicationsCost=0,cesareanCount=0,naturalDeliveryCount=0;
  for(const row of rows){
@@ -101,6 +97,8 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
  const item=await prisma.$transaction(async tx=>{
   const [patient,doctor,type]=await Promise.all([tx.patient.findUnique({where:{id:data.patientId},select:{id:true}}),tx.doctor.findUnique({where:{id:data.doctorId},select:{id:true}}),tx.operationType.findUnique({where:{id:data.operationTypeId},select:{id:true,isActive:true}})]);
   if(!patient||!doctor||!type?.isActive)throw Object.assign(new Error('Patient, doctor or active operation type not found'),{status:400});
+  const scope=operationScopeWhere(req.user);
+  if(scope.AND?.some(rule=>rule.doctorId&&!rule.doctorId.in.includes(data.doctorId)||rule.patientId&&!rule.patientId.in.includes(data.patientId)))throw Object.assign(new Error('Operation is outside your assigned access scope'),{status:403});
   const normalized=[];const movements=[];
   for(const entry of items){
    if(!entry.productId){normalized.push(entry);continue;}
@@ -113,7 +111,8 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
     if(remaining<=0)break;
     const available=Number(batch.quantity),take=Math.min(available,remaining);
     if(take<=0)continue;
-    await tx.stockItem.update({where:{id:batch.id},data:{quantity:{decrement:take}}});
+    const deducted=await tx.stockItem.updateMany({where:{id:batch.id,quantity:{gte:take}},data:{quantity:{decrement:take}}});
+    if(deducted.count!==1)throw Object.assign(new Error('Stock changed concurrently; retry the operation'),{status:409});
     movements.push({productId:product.id,stockItemId:batch.id,movementType:'OPERATION_CONSUMPTION',quantity:-take,unitCost:batch.unitCost,performedById:req.user.id});
     totalValue+=take*Number(batch.unitCost);remaining-=take;
    }
@@ -126,6 +125,6 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
   await tx.auditLog.create({data:{userId:req.user.id,action:'OPERATION_CREATED',entity:'Operation',entityId:created.id,ipAddress:req.ip,afterData:{operationNo:created.operationNo,totalCost:totals.totalCost,itemCount:items.length}}});
   return created;
  });
- res.status(201).json({item});
+ res.status(201).json({item:protectCosts(item,canReadCosts(req.user))});
 }catch(error){if(error.code==='P2002')return res.status(409).json({error:'Operation number already exists'});next(error);}});
-operationsRouter.get('/:id',requirePermission('operations.read'),async(req,res,next)=>{try{const item=await prisma.operation.findUnique({where:{id:req.params.id},include});if(!item)return res.status(404).json({error:'Operation not found'});res.json({item:protectCosts(item,canReadCosts(req.user))});}catch(error){next(error);}});
+operationsRouter.get('/:id',requirePermission('operations.read'),async(req,res,next)=>{try{const item=await prisma.operation.findFirst({where:combineWhere({id:req.params.id},operationScopeWhere(req.user)),include});if(!item)return res.status(404).json({error:'Operation not found'});res.json({item:protectCosts(item,canReadCosts(req.user))});}catch(error){next(error);}});
