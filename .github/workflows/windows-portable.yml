@@ -1,0 +1,54 @@
+name: Windows portable desktop build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/windows-portable-desktop]
+    paths:
+      - 'package.json'
+      - 'electron/**'
+      - 'server/**'
+      - 'src/**'
+      - 'index.html'
+      - 'vite.config.*'
+      - '.github/workflows/windows-portable.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-portable:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install desktop and frontend dependencies
+        run: npm install
+      - name: Install API dependencies and generate Windows Prisma client
+        working-directory: server
+        run: |
+          npm install
+          npx prisma generate
+      - name: Build frontend
+        run: npm run build
+      - name: Download PostgreSQL 17 Windows binaries
+        shell: pwsh
+        run: |
+          $url = "https://get.enterprisedb.com/postgresql/postgresql-17.6-1-windows-x64-binaries.zip"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\postgres.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\postgres.zip" -DestinationPath "$env:RUNNER_TEMP\postgres"
+          New-Item -ItemType Directory -Force -Path "build-resources\postgres" | Out-Null
+          Copy-Item "$env:RUNNER_TEMP\postgres\pgsql\*" "build-resources\postgres" -Recurse -Force
+      - name: Package portable Windows executable
+        run: npm run package:windows
+      - name: Upload portable executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hospital-Management-Portable-Windows-x64
+          path: dist-electron/*.exe
+          if-no-files-found: error
+          retention-days: 14
