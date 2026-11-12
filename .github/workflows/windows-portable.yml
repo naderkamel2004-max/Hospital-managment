@@ -70,16 +70,51 @@ jobs:
           Invoke-WebRequest -Uri $url -OutFile "build-resources\\node\\node.exe"
       - name: Package portable Windows executable
         run: npm run package:windows
-      - name: Verify packaged Prisma migration runtime
+      - name: Verify packaged backend runtime dependencies
         shell: pwsh
         run: |
-          $prismaCli = "dist-electron\\win-unpacked\\resources\\server\\node_modules\\prisma\\build\\index.js"
-          if (-not (Test-Path $prismaCli)) {
-            Write-Host "Packaged server Prisma CLI is missing. Available server modules:"
-            Get-ChildItem "dist-electron\\win-unpacked\\resources\\server\\node_modules" -Directory -ErrorAction SilentlyContinue | Select-Object -First 30 -ExpandProperty Name
-            throw "Portable app is missing the Prisma CLI required for first-run database migrations: $prismaCli"
+          $sourceRoot = "server"
+          $packagedRoot = "dist-electron\\win-unpacked\\resources\\server"
+          $sourceModules = Join-Path $sourceRoot "node_modules"
+          $packagedModules = Join-Path $packagedRoot "node_modules"
+          $requiredFiles = @(
+            "package.json",
+            "src/app.js",
+            "prisma/schema.prisma",
+            "prisma/seed.js",
+            "node_modules/prisma/build/index.js",
+            "node_modules/@prisma/client/package.json",
+            "node_modules/.prisma/client/index.js",
+            "node_modules/express/package.json"
+          )
+          $missing = @()
+          foreach ($relative in $requiredFiles) {
+            $sourcePath = Join-Path $sourceRoot $relative
+            $packagedPath = Join-Path $packagedRoot $relative
+            if (-not (Test-Path $sourcePath)) { $missing += "source:$relative" }
+            if (-not (Test-Path $packagedPath)) { $missing += "package:$relative" }
           }
-          Write-Host "Packaged Prisma migration runtime verified."
+          $migrationFiles = @(Get-ChildItem (Join-Path $packagedRoot "prisma/migrations") -Filter "migration.sql" -Recurse -File -ErrorAction SilentlyContinue)
+          if ($migrationFiles.Count -eq 0) { $missing += "package:prisma/migrations/**/*.sql" }
+          $queryEngines = @(Get-ChildItem (Join-Path $packagedModules ".prisma/client") -Filter "*query_engine*.dll.node" -File -ErrorAction SilentlyContinue)
+          if ($queryEngines.Count -eq 0) { $missing += "package:generated Prisma Windows query engine (*.dll.node)" }
+          if ($missing.Count -gt 0) {
+            Write-Host "::error::Packaged backend runtime verification failed."
+            Write-Host "Missing items:"
+            $missing | ForEach-Object { Write-Host " - $_" }
+            foreach ($root in @($sourceModules, $packagedModules, (Join-Path $packagedRoot "prisma"))) {
+              Write-Host "Directory inventory: $root"
+              if (Test-Path $root) {
+                Get-ChildItem $root -Force -Recurse -File -ErrorAction SilentlyContinue |
+                  Select-Object -First 120 -ExpandProperty FullName
+              } else {
+                Write-Host "MISSING DIRECTORY"
+              }
+            }
+            throw "The portable application does not contain the complete backend production runtime."
+          }
+          Write-Host "Verified packaged Prisma CLI, Prisma Client, generated Windows query engine, Express, API entry point, seed, schema, and migrations."
+          Write-Host "Packaged backend dependency count: $((Get-ChildItem $packagedModules -Directory -ErrorAction SilentlyContinue).Count)"
       - name: Smoke test packaged Windows application as a standard Windows user
         shell: pwsh
         run: |
