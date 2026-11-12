@@ -64,7 +64,7 @@ export default function App() {
   </aside>
   <main className="main"><header className="topbar"><span>{t.dashboard} / {t[active]}</span><div className="top-actions"><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search}/></label><button className="secondary" onClick={()=>setLang(rtl?'en':'ar')}><Languages size={16}/>{t.language}</button><div className="user"><b>{user?.fullName||'—'}</b><small>{user?.role||'—'}</small></div><button className="secondary" onClick={logout}><LogOut size={16}/>{t.logout}</button></div></header>
    <section className="content"><div className="heading"><div><small>{t.title}</small><h1>{active==='dashboard'?t.welcome:t[active]}</h1><p>{t.overview}</p></div><div className="heading-actions">{active==='operations'&&permissions.includes('operations.create')&&<button className="primary" onClick={()=>setShowOperationForm(v=>!v)}>{showOperationForm?(rtl?'إغلاق':'Close'):(rtl?'إضافة عملية':'New operation')}</button>}<button className="secondary" onClick={()=>load(active)}><RefreshCw size={16}/>{t.retry}</button></div></div>
-   {showOperationForm&&active==='operations'?<OperationCreate token={token} lang={lang} onCancel={()=>setShowOperationForm(false)} onCreated={()=>{setShowOperationForm(false);load('operations');}}/>:loading?<div className="state"><Activity/>{t.loading}</div>:error?<div className="state error">{error}</div>:active==='dashboard'?<Dashboard data={data||{}} t={t} lang={lang}/>:<Records section={active} items={items} t={t} lang={lang}/>}
+   {showOperationForm&&active==='operations'?<OperationCreate token={token} lang={lang} onCancel={()=>setShowOperationForm(false)} onCreated={()=>{setShowOperationForm(false);load('operations');}}/>:loading?<div className="state"><Activity/>{t.loading}</div>:error?<div className="state error">{error}</div>:active==='dashboard'?<Dashboard data={data||{}} t={t} lang={lang}/>:<Records section={active} items={items} t={t} lang={lang} token={token} canUpdate={permissions.includes('operations.update')} onChanged={()=>load(active)}/>}
    <footer>© {new Date().getFullYear()} {t.title} · HMS</footer></section>
   </main>
  </div>;
@@ -73,7 +73,10 @@ function Dashboard({data,t,lang}) {
  const metrics=[[t.opsCount,data.operations??'—',ClipboardList],[t.patientsCount,data.patients??'—',Users],[t.doctorsCount,data.doctors??'—',Stethoscope],[t.deliveries,data.deliveries??'—',CalendarDays],[t.cost,data.totalCost===undefined?'—':new Intl.NumberFormat(lang==='ar'?'ar-EG':'en-US',{style:'currency',currency:'EGP'}).format(data.totalCost),Activity]];
  return <div className="metrics">{metrics.map(([label,value,Icon])=><article className="metric" key={label}><span><Icon size={18}/></span><small>{label}</small><strong>{value}</strong></article>)}</div>;
 }
-function Records({section,items,t,lang}) {
+function Records({section,items,t,lang,token,canUpdate,onChanged}) {
+ const [actionBusy,setActionBusy]=useState('');
+ const [actionError,setActionError]=useState('');
+ async function changeStatus(id,status){setActionBusy(id);setActionError('');try{await apiRequest('/api/operations/'+id+'/status',{token,method:'PATCH',body:{status}});onChanged();}catch(e){setActionError(e.message||'Request failed');}finally{setActionBusy('');}}
  const cols={
   operations:[[t.number,x=>x.operationNo],[t.patient,x=>x.patient?.firstName+' '+x.patient?.lastName],[t.doctor,x=>x.doctor?.fullName],[t.type,x=>x.operationType?.nameAr||x.operationType?.nameEn],[t.date,x=>dateText(x.scheduledAt,lang)],[t.status,x=>statusText(x.status,t)]],
   patients:[[t.patient,x=>x.firstName+' '+x.lastName],[t.number,x=>x.medicalRecordNo],[t.date,x=>dateText(x.createdAt,lang)]],
@@ -82,5 +85,5 @@ function Records({section,items,t,lang}) {
   users:[[t.name,x=>x.fullName],[t.email,x=>x.email],[t.status,x=>x.status]]
  }[section]||[];
  if(!items.length)return <div className="state">{t.empty}</div>;
- return <div className="table-wrap"><table><thead><tr>{cols.map(([name])=><th key={name}>{name}</th>)}</tr></thead><tbody>{items.map((item,i)=><tr key={item.id||i}>{cols.map(([name,get])=><td key={name}>{get(item)||'—'}</td>)}</tr>)}</tbody></table><small>{items.length} {lang==='ar'?'سجل':'records'}</small></div>;
+ return <div className="table-wrap"><table><thead><tr>{cols.map(([name])=><th key={name}>{name}</th>)}{section==='operations'&&canUpdate&&<th>{lang==='ar'?'الإجراء':'Actions'}</th>}</tr></thead><tbody>{items.map((item,i)=><tr key={item.id||i}>{cols.map(([name,get])=><td key={name}>{get(item)||'—'}</td>)}{section==='operations'&&canUpdate&&<td><div className="row-actions">{item.status==='SCHEDULED'&&<><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'IN_PROGRESS')}>{lang==='ar'?'بدء':'Start'}</button><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'CANCELLED')}>{lang==='ar'?'إلغاء':'Cancel'}</button></>}{item.status==='IN_PROGRESS'&&<><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'COMPLETED')}>{lang==='ar'?'إتمام':'Complete'}</button><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'CANCELLED')}>{lang==='ar'?'إلغاء':'Cancel'}</button></>}</div></td>}</tr>)}</tbody></table>{actionError&&<div className="error" style={{padding:'10px 14px'}}>{actionError}</div>}<small>{items.length} {lang==='ar'?'سجل':'records'}</small></div>;
 }
