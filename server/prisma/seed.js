@@ -5,7 +5,10 @@ const prisma=new PrismaClient();
 
 const permissions=[
   ['patients.read','Read patient records'],['patients.create','Register patients'],['patients.update','Update patient records'],
-  ['departments.read','Read departments'],['appointments.read','Read appointments'],['appointments.create','Create appointments']
+  ['departments.read','Read departments'],['appointments.read','Read appointments'],['appointments.create','Create appointments'],
+  ['doctors.read','Read doctors'],['doctors.create','Create doctors'],
+  ['operations.read','Read operations'],['operations.create','Create operations'],['operations.update','Update operations'],['operations.manage_types','Manage operation types'],['operations.costs.read','Read operation financial costs'],
+  ['dashboard.read','Read dashboard analytics']
 ];
 
 async function main(){
@@ -23,6 +26,14 @@ async function main(){
     update:{fullName:process.env.SEED_ADMIN_NAME||'System Administrator',roleId:role.id,isActive:true,status:'ACTIVE'},
     create:{email,passwordHash,fullName:process.env.SEED_ADMIN_NAME||'System Administrator',roleId:role.id}
   });
-  console.log('HMS bootstrap role and administrator are ready.');
+  const operationTypes=[
+    {code:'CESAREAN_SECTION',nameAr:'ولادة قيصرية',nameEn:'Cesarean Section',isDelivery:true,isCesarean:true},
+    {code:'NATURAL_DELIVERY',nameAr:'ولادة طبيعية',nameEn:'Natural Delivery',isDelivery:true,isCesarean:false},
+    {code:'GALLBLADDER',nameAr:'استئصال المرارة',nameEn:'Gallbladder Surgery',isDelivery:false,isCesarean:false},
+    {code:'APPENDECTOMY',nameAr:'استئصال الزائدة',nameEn:'Appendectomy',isDelivery:false,isCesarean:false},
+    {code:'HERNIA',nameAr:'إصلاح فتق',nameEn:'Hernia Repair',isDelivery:false,isCesarean:false}
+  ];
+  for(const type of operationTypes) await prisma.operationType.upsert({where:{code:type.code},update:type,create:type});
+  console.log('HMS bootstrap role, administrator, permissions and starter operation types are ready.');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>prisma.$disconnect());
