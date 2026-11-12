@@ -19,6 +19,8 @@ extraResources:
     to: server/node_modules
     filter:
       - "**/*"
+      - ".prisma/**/*"
+      - ".bin/**/*"
   - from: build-resources/node
     to: node
     filter:
