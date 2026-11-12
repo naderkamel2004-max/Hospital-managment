@@ -193,6 +193,7 @@ model StockItem {
   expiryDate DateTime?
   unitCost Decimal @db.Decimal(14,2)
   quantity Decimal @db.Decimal(12,3)
+  createdAt DateTime @default(now())
   @@unique([productId, batchNo])
   @@index([expiryDate])
 }
