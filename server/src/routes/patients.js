@@ -30,6 +30,12 @@ patientsRouter.get('/', requirePermission('patients.read'), async (req,res,next)
       { lastName:{contains:q, mode:'insensitive'} },
       { phone:{contains:q, mode:'insensitive'} }
     ] } : {};
+    if(req.user.role!=='SUPER_ADMIN'){
+      const patientScopes=req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId);
+      const doctorScopes=req.user.scopes.filter(x=>x.resource==='doctor').map(x=>x.resourceId);
+      if(patientScopes.length)where.id={in:patientScopes};
+      if(doctorScopes.length)where.operations={some:{doctorId:{in:doctorScopes}}};
+    }
     const [items,total] = await prisma.$transaction([
       prisma.patient.findMany({where,select,orderBy:{createdAt:'desc'},skip:(page-1)*pageSize,take:pageSize}),
       prisma.patient.count({where})
@@ -39,7 +45,7 @@ patientsRouter.get('/', requirePermission('patients.read'), async (req,res,next)
 });
 patientsRouter.get('/:id', requirePermission('patients.read'), async(req,res,next)=>{
   try {
-    const patient=await prisma.patient.findUnique({where:{id:req.params.id},select:{...select,appointments:{orderBy:{startsAt:'desc'},take:10,select:{id:true,startsAt:true,status:true,reason:true,doctor:{select:{fullName:true}},department:{select:{nameAr:true,nameEn:true}}}},encounters:{orderBy:{startedAt:'desc'},take:10,select:{id:true,startedAt:true,status:true,diagnosis:true}},operations:{orderBy:{scheduledAt:'desc'},take:50,include:{doctor:{select:{id:true,fullName:true}},operationType:{select:{nameAr:true,nameEn:true}},items:true}}}});
+    const patient=await prisma.patient.findUnique({where:{id:req.params.id,...(req.user.role!=='SUPER_ADMIN'&&req.user.scopes.some(x=>x.resource==='patient')?{id:{in:req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId)}}:{})},select:{...select,appointments:{orderBy:{startsAt:'desc'},take:10,select:{id:true,startsAt:true,status:true,reason:true,doctor:{select:{fullName:true}},department:{select:{nameAr:true,nameEn:true}}}},encounters:{orderBy:{startedAt:'desc'},take:10,select:{id:true,startedAt:true,status:true,diagnosis:true}},operations:{orderBy:{scheduledAt:'desc'},take:50,include:{doctor:{select:{id:true,fullName:true}},operationType:{select:{nameAr:true,nameEn:true}},items:true}}}});
     if(!patient) return res.status(404).json({error:'Patient not found'});
     if(req.user.role!=='SUPER_ADMIN'&&!req.user.permissions.includes('operations.costs.read')){
       patient.operations=patient.operations.map(({totalCost,consumablesCost,medicationsCost,otherCost,...operation})=>({...operation,items:operation.items.map(({purchaseUnitPrice,sellingUnitPrice,lineCost,...line})=>line)}));
