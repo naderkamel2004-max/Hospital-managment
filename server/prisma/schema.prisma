@@ -5,12 +5,47 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-enum UserStatus { ACTIVE INACTIVE LOCKED }
-enum AppointmentStatus { BOOKED CONFIRMED CHECKED_IN COMPLETED CANCELLED NO_SHOW }
-enum EncounterStatus { OPEN IN_PROGRESS CLOSED }
-enum AdmissionStatus { ADMITTED DISCHARGED TRANSFERRED }
-enum OrderStatus { NEW IN_PROGRESS COMPLETED CANCELLED }
-enum InvoiceStatus { DRAFT ISSUED PARTIALLY_PAID PAID VOID }
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum EncounterStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum AdmissionStatus {
+  ADMITTED
+  DISCHARGED
+  TRANSFERRED
+}
+
+enum OrderStatus {
+  NEW
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
 model Role {
   id String @id @default(cuid())
   code String @unique
