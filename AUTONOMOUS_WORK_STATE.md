@@ -25,8 +25,11 @@ Inventory movement history API and batch count/movement UI added; CI pending on 
 ## Last completed increment
 Department create/update/deactivate API with `departments.manage`, validation, duplicate-code handling, audit events and integration coverage. Commit `dd7ad0a4c632199c77f22e52c2eee762f8194cc0`; its CI result is being checked.
 
+## Last verified increment
+Department administration API and UI, plus inventory movement/count UI and appointment management UI, passed GitHub Actions run `43140004544` on commit `4e1936af95dfc157a575862341759756e3044ffd` (backend-check and frontend-build success).
+
 ## Current active task
-Admission and encounter backend foundations: scoped patient access, encounter creation/list/update/closure, admission create/list/transfer/discharge, audit logging and integration coverage.
+Admission and encounter screens for patient admission/discharge/transfer and clinical encounter creation/closure; extend integration tests for update permissions and state transitions.
 
 ## Pending tasks (priority order)
 1. Verify the patient profile editing increment through GitHub Actions; fix any build/test failure.

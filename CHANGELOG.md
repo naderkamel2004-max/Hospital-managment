@@ -29,3 +29,5 @@ All notable project increments are recorded here.
 - Corrected department route permission layering so users with `departments.manage` can write without an unnecessary `departments.read` grant; GET remains protected by `departments.read`.
 
 - Added encounter APIs for scoped listing, creation, clinical note/diagnosis updates and closure; added admission APIs for scoped listing, admission, transfer and discharge, with audit logging and permission seed entries.
+
+- Added admission and encounter management UI for patient admission, ward/bed labels, encounter creation, transfer, discharge and encounter closure; expanded lifecycle integration tests for authorized and forbidden updates.

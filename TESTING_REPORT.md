@@ -68,3 +68,10 @@ CI showed the authorized department update returned 403 because the router appli
 
 ## Admissions and encounters API increment
 Added authenticated and permission-gated routes, patient-scope filtering, audit events and integration checks for unauthorized/authorized creation of an encounter and admission. CI pending; no local execution is claimed.
+
+
+## CI verification: inventory, appointment and department UI/API
+GitHub Actions run [43140004544](https://github.com/naderkamel2004-max/Hospital-managment/actions/runs/43140004544) on commit `4e1936af95dfc157a575862341759756e3044ffd` completed successfully: backend-check and frontend-build both passed.
+
+## Admission/encounter UI and lifecycle tests
+Added bilingual admission/encounter screens and integration assertions for encounter closure and admission discharge permission checks. This new increment is awaiting CI.
