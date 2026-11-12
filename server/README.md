@@ -6,7 +6,8 @@ Node.js / Express API backed by PostgreSQL and Prisma.
 1. Copy `.env.example` to `.env` and set a strong, unique `JWT_ACCESS_SECRET`.
 2. Start PostgreSQL using `docker compose up -d db` from the repository root.
 3. From this directory run `npm install`, `npx prisma generate`, then `npx prisma migrate dev --name init`.
-4. Start the API with `npm run dev`.
+4. Set `SEED_ADMIN_EMAIL` and a unique `SEED_ADMIN_PASSWORD` in `.env` (at least 14 characters), then run `npm run db:seed` once to create the first administrator and base permissions. The seed will not set a default password.
+5. Start the API with `npm run dev`.
 
 ## Endpoints
 - `GET /api/health` — liveness check.
