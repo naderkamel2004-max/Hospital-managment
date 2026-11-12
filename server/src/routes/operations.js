@@ -125,4 +125,32 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
  });
  res.status(201).json({item:protectCosts(item,canReadCosts(req.user))});
 }catch(error){if(error.code==='P2002')return res.status(409).json({error:'Operation number already exists'});next(error);}});
+operationsRouter.patch('/:id/status',requirePermission('operations.update'),async(req,res,next)=>{try{
+ const parsed=z.object({status:z.enum(['IN_PROGRESS','COMPLETED','CANCELLED'])}).safeParse(req.body);
+ if(!parsed.success)return res.status(400).json({error:'Invalid operation status'});
+ const item=await prisma.$transaction(async tx=>{
+  const before=await tx.operation.findFirst({where:combineWhere({id:req.params.id},operationScopeWhere(req.user)),select:{id:true,status:true,operationNo:true,startedAt:true,endedAt:true}});
+  if(!before)throw Object.assign(new Error('Operation not found'),{status:404});
+  const nextStatus=parsed.data.status;
+  const allowed=(before.status==='SCHEDULED'&&['IN_PROGRESS','CANCELLED'].includes(nextStatus))||(before.status==='IN_PROGRESS'&&['COMPLETED','CANCELLED'].includes(nextStatus));
+  if(!allowed)throw Object.assign(new Error('Invalid operation status transition'),{status:409});
+  const changed=await tx.operation.updateMany({where:{id:before.id,status:before.status},data:{status:nextStatus,...(nextStatus==='IN_PROGRESS'?{startedAt:before.startedAt||new Date()}:{}),...(nextStatus==='COMPLETED'?{endedAt:new Date()}:{}),...(nextStatus==='CANCELLED'&&before.startedAt?{endedAt:new Date()}:{})}});
+  if(changed.count!==1)throw Object.assign(new Error('Operation status changed concurrently; refresh and retry'),{status:409});
+  if(nextStatus==='CANCELLED'){
+   const consumed=await tx.stockMovement.findMany({where:{referenceType:'Operation',referenceId:before.id,movementType:'OPERATION_CONSUMPTION'},select:{productId:true,stockItemId:true,quantity:true,unitCost:true}});
+   const reversals=[];
+   for(const movement of consumed){
+    if(!movement.stockItemId)throw Object.assign(new Error('Cannot safely restore stock: original batch reference is missing'),{status:409});
+    const restored=Number(movement.quantity)*-1;
+    await tx.stockItem.update({where:{id:movement.stockItemId},data:{quantity:{increment:restored}}});
+    reversals.push({productId:movement.productId,stockItemId:movement.stockItemId,movementType:'OPERATION_CANCELLATION',quantity:restored,unitCost:movement.unitCost,referenceType:'OperationCancellation',referenceId:before.id,performedById:req.user.id});
+   }
+   if(reversals.length)await tx.stockMovement.createMany({data:reversals});
+  }
+  const updated=await tx.operation.findUnique({where:{id:before.id},include});
+  await tx.auditLog.create({data:{userId:req.user.id,action:'OPERATION_STATUS_CHANGED',entity:'Operation',entityId:before.id,ipAddress:req.ip,beforeData:{status:before.status},afterData:{status:nextStatus,operationNo:before.operationNo}}});
+  return updated;
+ });
+ res.json({item:protectCosts(item,canReadCosts(req.user))});
+}catch(error){next(error);}});
 operationsRouter.get('/:id',requirePermission('operations.read'),async(req,res,next)=>{try{const item=await prisma.operation.findFirst({where:combineWhere({id:req.params.id},operationScopeWhere(req.user)),include});if(!item)return res.status(404).json({error:'Operation not found'});res.json({item:protectCosts(item,canReadCosts(req.user))});}catch(error){next(error);}});
