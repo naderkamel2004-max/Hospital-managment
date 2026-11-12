@@ -27,6 +27,12 @@ const operationSchema=z.object({
   items:z.array(itemSchema).max(300).default([])
 });
 const include={patient:{select:{id:true,medicalRecordNo:true,firstName:true,lastName:true}},doctor:{select:{id:true,fullName:true,specialty:true}},operationType:{select:{id:true,code:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}},items:true};
+function canReadCosts(user){return user.role==='SUPER_ADMIN'||user.permissions?.includes('operations.costs.read');}
+function protectCosts(item,allowed){
+ if(allowed)return item;
+ const {consumablesCost,medicationsCost,otherCost,totalCost,...safe}=item;
+ return {...safe,items:item.items?.map(({purchaseUnitPrice,sellingUnitPrice,lineCost,...line})=>line)};
+}
 function calculate(items){
  const lines=items.map(item=>({...item,lineCost:Number((item.quantity*item.purchaseUnitPrice).toFixed(2))}));
  const totals={MEDICATION:0,CONSUMABLE:0,OTHER:0};
@@ -50,7 +56,7 @@ operationsRouter.get('/',requirePermission('operations.read'),async(req,res,next
  if(typeof req.query.patientId==='string')where.patientId=req.query.patientId;
  if(typeof req.query.operationTypeId==='string')where.operationTypeId=req.query.operationTypeId;
  const items=await prisma.operation.findMany({where,include,orderBy:{scheduledAt:'desc'},take:500});
- res.json({items});
+ res.json({items:items.map(item=>protectCosts(item,canReadCosts(req.user)))});
 }catch(error){next(error);}});
 operationsRouter.get('/analytics',requirePermission('operations.read'),async(req,res,next)=>{try{
  const from=req.query.from?new Date(String(req.query.from)):new Date(new Date().getFullYear(),0,1);
@@ -70,7 +76,8 @@ operationsRouter.get('/analytics',requirePermission('operations.read'),async(req
   if(row.operationType.isCesarean)cesareanCount++;
   if(row.operationType.isDelivery&&!row.operationType.isCesarean)naturalDeliveryCount++;
  }
- res.json({summary:{operations:rows.length,totalCost:Number(totalCost.toFixed(2)),averageCost:rows.length?Number((totalCost/rows.length).toFixed(2)):0,consumablesCost:Number(consumablesCost.toFixed(2)),medicationsCost:Number(medicationsCost.toFixed(2)),deliveries:cesareanCount+naturalDeliveryCount,cesareanCount,naturalDeliveryCount},byMonth:[...byMonth].map(([month,count])=>({month,count})),byType:[...byType].map(([operationType,count])=>({operationType,count})),byDoctor:[...byDoctor].map(([doctor,count])=>({doctor,count}))});
+ const financial=canReadCosts(req.user)?{totalCost:Number(totalCost.toFixed(2)),averageCost:rows.length?Number((totalCost/rows.length).toFixed(2)):0,consumablesCost:Number(consumablesCost.toFixed(2)),medicationsCost:Number(medicationsCost.toFixed(2))}:{};
+ res.json({summary:{operations:rows.length,...financial,deliveries:cesareanCount+naturalDeliveryCount,cesareanCount,naturalDeliveryCount},byMonth:[...byMonth].map(([month,count])=>({month,count})),byType:[...byType].map(([operationType,count])=>({operationType,count})),byDoctor:[...byDoctor].map(([doctor,count])=>({doctor,count}))});
 }catch(error){next(error);}});
 operationsRouter.post('/',requirePermission('operations.create'),async(req,res,next)=>{try{
  const p=operationSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid operation data',details:p.error.flatten()});
@@ -89,4 +96,4 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
  });
  res.status(201).json({item});
 }catch(error){if(error.code==='P2002')return res.status(409).json({error:'Operation number already exists'});next(error);}});
-operationsRouter.get('/:id',requirePermission('operations.read'),async(req,res,next)=>{try{const item=await prisma.operation.findUnique({where:{id:req.params.id},include});if(!item)return res.status(404).json({error:'Operation not found'});res.json({item});}catch(error){next(error);}});
+operationsRouter.get('/:id',requirePermission('operations.read'),async(req,res,next)=>{try{const item=await prisma.operation.findUnique({where:{id:req.params.id},include});if(!item)return res.status(404).json({error:'Operation not found'});res.json({item:protectCosts(item,canReadCosts(req.user))});}catch(error){next(error);}});
