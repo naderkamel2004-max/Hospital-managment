@@ -60,8 +60,10 @@ async function startDatabase() {
   const postgresExe = path.join(bin, 'postgres.exe');
   const pgIsReady = path.join(bin, 'pg_isready.exe');
   const passwordFile = path.join(app.getPath('userData'), 'db-password.tmp');
-  const password = randomBytes(32).toString('hex');
-  const env = { ...process.env, PATH: `${bin};${process.env.PATH || ''}` };
+  const dbPasswordPath = path.join(app.getPath('userData'), 'database-password.txt');
+  const password = fs.existsSync(dbPasswordPath) ? fs.readFileSync(dbPasswordPath, 'utf8') : randomBytes(32).toString('hex');
+  const env = { ...process.env, PATH: `${bin};${path.join(postgresRoot, 'lib')};${process.env.PATH || ''}` };
+  if (!fs.existsSync(dbPasswordPath)) fs.writeFileSync(dbPasswordPath, password, { mode: 0o600 });
 
   if (!fs.existsSync(path.join(dataRoot, 'PG_VERSION'))) {
     fs.writeFileSync(passwordFile, password, { mode: 0o600 });
@@ -80,14 +82,7 @@ async function startDatabase() {
   });
   await waitForDatabase(pgIsReady);
 
-  const dbPasswordPath = path.join(app.getPath('userData'), 'database-password.txt');
-  let savedPassword;
-  if (fs.existsSync(dbPasswordPath)) savedPassword = fs.readFileSync(dbPasswordPath, 'utf8');
-  else {
-    savedPassword = password;
-    fs.writeFileSync(dbPasswordPath, savedPassword, { mode: 0o600 });
-  }
-  return `postgresql://hms:${encodeURIComponent(savedPassword)}@127.0.0.1:55432/hms?schema=public`;
+  return `postgresql://hms:${encodeURIComponent(password)}@127.0.0.1:55432/hms?schema=public`;
 }
 
 async function startApi(databaseUrl) {
@@ -109,9 +104,9 @@ async function startApi(databaseUrl) {
 
   const { app: api } = await import(pathToFileURL(path.join(serverRoot, 'src', 'app.js')).href);
   const express = (await import(path.join(serverRoot, 'node_modules', 'express', 'index.js'))).default;
-  const frontend = path.join(resources, 'app', 'dist');
+  const frontend = path.join(app.getAppPath(), 'dist');
   api.use(express.static(frontend));
-  api.get('*', (_req, res) => res.sendFile(path.join(frontend, 'index.html')));
+  api.get(/.*/, (_req, res) => res.sendFile(path.join(frontend, 'index.html')));
   httpServer = await new Promise((resolve, reject) => {
     const server = api.listen(port, '127.0.0.1', () => resolve(server));
     server.once('error', reject);
