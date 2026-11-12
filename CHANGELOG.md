@@ -21,3 +21,5 @@ All notable project increments are recorded here.
 - Added Arabic/English appointment management UI for booking, confirmation, rescheduling, cancellation, check-in and completion; actions are permission-gated and refresh the live API list.
 
 - Added inventory movement history API and UI, plus per-batch physical count correction with reason capture and permission-gated submission. Zero-quantity batches remain visible for reconciliation.
+
+- Added department create/update/deactivate API with normalized unique codes, strict validation, dedicated `departments.manage` permission and audit records; added integration coverage for permission enforcement and update.

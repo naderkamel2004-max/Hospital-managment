@@ -19,8 +19,11 @@ Integration-test teardown order fixed: appointment fixture is deleted before its
 ## Last completed increment
 Appointment management UI committed in `a46ec8a8a0af955a981d13cf0639eab52d025358`; CI run `43139173910` must be checked for completion before claiming validation.
 
+## Last completed increment
+Inventory movement history API and batch count/movement UI added; CI pending on commit `e1f56fbf918b19e59606f8ec255de6b11895a132`.
+
 ## Current active task
-Inventory operations UI: physical count inputs per stock batch, reason capture, permission-gated count adjustments and stock movement history.
+Department administration API: create/update/deactivate, validation, uniqueness handling and audit logging; integration test verifies permission enforcement and update.
 
 ## Pending tasks (priority order)
 1. Verify the patient profile editing increment through GitHub Actions; fix any build/test failure.
@@ -59,4 +62,4 @@ GitHub Actions run `43137138590` on commit `7072d48eee5caa5accd369d22601ec27e5a8
 - No real patient data may be used.
 
 ## Exact next action
-Commit the inventory movement endpoint and batch count/movement UI. Verify CI; fix any frontend/backend failure, then continue with doctor lifecycle and department CRUD.
+Commit department CRUD API, seed permission and integration coverage together with updated tracking. Verify latest inventory UI CI and department API CI, fix failures, then build department administration UI.

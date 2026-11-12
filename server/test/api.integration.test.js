@@ -17,6 +17,7 @@ let operationsUpdatePermission;
 let doctorsUpdatePermission;
 let inventoryAdjustPermission;
 let appointmentUpdatePermission;
+let departmentManagePermission;
 let appointment;
 let department;
 let patient;
@@ -43,6 +44,7 @@ before(async () => {
   doctorsUpdatePermission = await prisma.permission.create({ data: { code: 'doctors.update', description: 'Update doctors for integration test' }});
   inventoryAdjustPermission = await prisma.permission.create({ data: { code: 'inventory.adjust', description: 'Adjust stock quantities in integration test' }});
   appointmentUpdatePermission = await prisma.permission.create({ data: { code: 'appointments.update', description: 'Update appointments in integration test' }});
+  departmentManagePermission = await prisma.permission.create({ data: { code: 'departments.manage', description: 'Manage departments in integration test' }});
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: doctorsUpdatePermission.id }});
   operationsUpdatePermission = await prisma.permission.create({ data: { code: 'operations.update', description: 'Update operations for stock reversal integration test' }});
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsUpdatePermission.id }});
@@ -71,6 +73,7 @@ after(async () => {
   if (doctorsUpdatePermission) await prisma.permission.deleteMany({ where: { id: doctorsUpdatePermission.id }});
   if (inventoryAdjustPermission) await prisma.permission.deleteMany({ where: { id: inventoryAdjustPermission.id }});
   if (appointmentUpdatePermission) await prisma.permission.deleteMany({ where: { id: appointmentUpdatePermission.id }});
+  if (departmentManagePermission) await prisma.permission.deleteMany({ where: { id: departmentManagePermission.id }});
   await prisma.$disconnect();
 });
 
@@ -103,6 +106,11 @@ test('login, live permission revocation, and account lockout are enforced', asyn
   department = await prisma.department.create({ data: { code: 'CI_DEPT_' + suffix, nameAr: 'اختبار', nameEn: 'CI Test' }});
   patient = await prisma.patient.create({ data: { medicalRecordNo: 'CI-' + suffix, firstName: 'Test', lastName: 'Patient' }});
   doctor = await prisma.doctor.create({ data: { fullName: 'CI Test Doctor', departmentId: department.id }});
+  await request(app).patch('/api/departments/' + department.id).set('Authorization', 'Bearer ' + accessToken).send({ nameEn: 'Changed Department' }).expect(403);
+  await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: departmentManagePermission.id }});
+  const changedDepartment = await request(app).patch('/api/departments/' + department.id).set('Authorization', 'Bearer ' + accessToken).send({ nameEn: 'Changed Department' }).expect(200);
+  assert.equal(changedDepartment.body.item.nameEn, 'Changed Department');
+
   await request(app).patch('/api/doctors/' + doctor.id).set('Authorization', 'Bearer ' + accessToken).send({ fullName: 'CI Updated Doctor', specialty: 'Surgery' }).expect(200);
   const updatedDoctor = await prisma.doctor.findUnique({ where: { id: doctor.id }});
   assert.equal(updatedDoctor.fullName, 'CI Updated Doctor');

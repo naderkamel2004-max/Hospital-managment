@@ -5,7 +5,7 @@ const prisma=new PrismaClient();
 
 const permissions=[
   ['patients.read','Read patient records'],['patients.create','Register patients'],['patients.update','Update patient records'],
-  ['departments.read','Read departments'],['appointments.read','Read appointments'],['appointments.create','Create appointments'],['appointments.update','Update and reschedule appointments'],
+  ['departments.read','Read departments'],['departments.manage','Create, update and deactivate departments'],['appointments.read','Read appointments'],['appointments.create','Create appointments'],['appointments.update','Update and reschedule appointments'],
   ['doctors.read','Read doctors'],['doctors.create','Create doctors'],['doctors.update','Update doctors'],
   ['operations.read','Read operations'],['operations.create','Create operations'],['operations.update','Update operations'],['operations.costs.write','Enter manual operation costs'],['operations.manage_types','Manage operation types'],['operations.costs.read','Read operation financial costs'],
   ['dashboard.read','Read dashboard analytics'],

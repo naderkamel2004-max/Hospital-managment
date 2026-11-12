@@ -52,3 +52,7 @@ Added the appointment screen with live API integration and permission-gated crea
 
 ## Inventory UI and movement-history increment
 Added `/api/inventory/movements` with date-range validation and cost masking, exposed all stock batches including zero-quantity batches for reconciliation, and added batch count/reason UI. The screen shows movement type, quantity, batch and performer ID. CI validation is pending.
+
+
+## Department administration API increment
+Added department creation and update/deactivation endpoints behind `departments.manage`, with strict input validation, duplicate-code conflict handling and audit logging. Integration coverage checks denied updates and authorized updates. CI pending.
