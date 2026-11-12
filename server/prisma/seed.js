@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma=new PrismaClient();
 
 const permissions=[
-  ['patients.read','Read patient records'],['patients.create','Register patients'],['patients.update','Update patient records'],
+  ['patients.read','Read patient records'],['encounters.read','Read patient encounters'],['encounters.create','Create patient encounters'],['encounters.update','Update and close patient encounters'],['admissions.read','Read patient admissions'],['admissions.create','Admit patients'],['admissions.update','Transfer and discharge patients'],['patients.create','Register patients'],['patients.update','Update patient records'],
   ['departments.read','Read departments'],['departments.manage','Create, update and deactivate departments'],['appointments.read','Read appointments'],['appointments.create','Create appointments'],['appointments.update','Update and reschedule appointments'],
   ['doctors.read','Read doctors'],['doctors.create','Create doctors'],['doctors.update','Update doctors'],
   ['operations.read','Read operations'],['operations.create','Create operations'],['operations.update','Update operations'],['operations.costs.write','Enter manual operation costs'],['operations.manage_types','Manage operation types'],['operations.costs.read','Read operation financial costs'],

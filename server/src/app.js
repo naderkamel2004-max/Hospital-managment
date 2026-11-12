@@ -15,6 +15,8 @@ import { usersRouter } from './routes/users.js';
 import { studioRouter } from './routes/studio.js';
 import { inventoryRouter } from './routes/inventory.js';
 import { auditRouter } from './routes/audit.js';
+import { encountersRouter } from './routes/encounters.js';
+import { admissionsRouter } from './routes/admissions.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -32,6 +34,8 @@ app.use('/api/users', usersRouter);
 app.use('/api/studio', studioRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/audit-logs', auditRouter);
+app.use('/api/encounters', encountersRouter);
+app.use('/api/admissions', admissionsRouter);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'hms-api' }));
 app.get('/api/me', requireAuth, (req, res) => res.json({ user: req.user }));
 app.use((err, _req, res, _next) => {

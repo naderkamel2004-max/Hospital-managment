@@ -64,3 +64,7 @@ Added a bilingual department management screen with create/edit and activation c
 
 ## Department permission test failure and correction
 CI showed the authorized department update returned 403 because the router applied `departments.read` globally before the route-level `departments.manage` check. The router now applies authentication globally, `departments.read` only to GET, and `departments.manage` to write routes. Rerun CI required.
+
+
+## Admissions and encounters API increment
+Added authenticated and permission-gated routes, patient-scope filtering, audit events and integration checks for unauthorized/authorized creation of an encounter and admission. CI pending; no local execution is claimed.

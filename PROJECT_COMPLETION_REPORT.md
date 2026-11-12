@@ -24,10 +24,10 @@ The repository contains a working development foundation with an authenticated R
 | Users, roles and permissions UI | 25% | Backend authorization foundation and user listing; full administration and scope editor remain |
 | Reports and analytics | 30% | Dashboard and operation analytics foundations; report catalog, exports and validation remain |
 | System Studio | 15% | Backend foundation exists; complete settings and dashboard configuration UI remain |
-| Admissions, encounters, prescriptions, labs, billing | 5% | Core schema foundations only; operational workflows remain |
+| Admissions and encounters | 35% | Scoped create/list/update/close and admit/transfer/discharge API foundations; UI, bed management and full workflow testing remain |\n| Prescriptions, labs and billing | 5% | Core schema foundations only; operational workflows remain |
 | Security, backup and deployment readiness | 15% | Baseline hardening and CI; threat review, backup/restore drills, monitoring, deployment and acceptance remain |
 
-**Overall estimated completion: 41%.** This is a planning estimate across the full agreed system scope; it must not be interpreted as production readiness.
+**Overall estimated completion: 44%.** This is a planning estimate across the full agreed system scope; it must not be interpreted as production readiness.
 
 ## Latest verified increment
 
