@@ -87,32 +87,41 @@ function runBinary(executable, args, options = {}) {
   });
 }
 
-async function waitForDatabase(pgIsReady, password, env) {
+async function waitForDatabase(psql, password, env) {
   for (let attempt = 0; attempt < 90; attempt++) {
     if (postgresStartupError) throw postgresStartupError;
     if (postgres && postgres.exitCode !== null) {
       throw new Error('The PostgreSQL process exited before the database became ready. See startup.log.');
     }
     try {
-      await runBinary(pgIsReady, ['-h', '127.0.0.1', '-p', '55432', '-U', 'hms', '-d', 'hms'], { env: { ...env, PGPASSWORD: password } });
-      log('INFO', 'Local PostgreSQL is accepting connections.');
+      // pg_isready only reports server availability; it does not validate credentials.
+      // Run a real SQL query so startup cannot continue with a rejected password.
+      const output = await runBinary(psql, [
+        '-w', '-h', '127.0.0.1', '-p', '55432', '-U', 'hms', '-d', 'hms',
+        '-v', 'ON_ERROR_STOP=1', '-A', '-t', '-c', 'SELECT 1'
+      ], { env: { ...env, PGPASSWORD: password } });
+      if (output.trim() !== '1') {
+        throw new Error('PostgreSQL authenticated probe returned an unexpected result.');
+      }
+      log('INFO', 'Local PostgreSQL authenticated query succeeded.');
       return;
     } catch (error) {
       if (attempt === 0 || (attempt + 1) % 15 === 0) {
-        log('INFO', 'Waiting for local PostgreSQL (' + (attempt + 1) + '/90).', error);
-        await setStatus('Starting local database…', 'This first startup can take a minute. Please keep this window open.');
+        // Do not include connection environment or password in diagnostics.
+        log('INFO', 'Waiting for an authenticated PostgreSQL connection (' + (attempt + 1) + '/90).', error);
+        await setStatus('Starting the local database…', 'Checking the local database connection.');
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
-  throw new Error('The local database did not become ready within 90 seconds. See startup.log for details.');
+  throw new Error('The local database did not accept an authenticated SQL query within 90 seconds. Check startup.log for PostgreSQL diagnostics.');
 }
 
 async function startDatabase() {
   fs.mkdirSync(userData, { recursive: true });
   const hasInitializedDatabase = fs.existsSync(path.join(dataRoot, 'PG_VERSION'));
   if (!hasInitializedDatabase && fs.existsSync(dataRoot)) {
-    // A previous startup may have left an incomplete directory. It is not a valid database cluster.
+    // Only an uninitialized/incomplete cluster may be reset. Never touch a valid database.
     log('WARN', 'Removing incomplete PostgreSQL data directory before retrying initialization: ' + dataRoot);
     fs.rmSync(dataRoot, { recursive: true, force: true });
   }
@@ -120,15 +129,20 @@ async function startDatabase() {
   postgresBin = bin;
   const initdb = path.join(bin, 'initdb.exe');
   const postgresExe = path.join(bin, 'postgres.exe');
-  const pgIsReady = path.join(bin, 'pg_isready.exe');
-  for (const executable of [initdb, postgresExe, pgIsReady]) {
+  const psql = path.join(bin, 'psql.exe');
+  for (const executable of [initdb, postgresExe, psql]) {
     if (!fs.existsSync(executable)) throw new Error('A required PostgreSQL file is missing: ' + executable);
   }
   const passwordFile = path.join(userData, 'db-password.tmp');
   const dbPasswordPath = path.join(userData, 'database-password.txt');
-  const password = fs.existsSync(dbPasswordPath) ? fs.readFileSync(dbPasswordPath, 'utf8') : randomBytes(32).toString('hex');
+  const hasStoredPassword = fs.existsSync(dbPasswordPath);
+  if (hasInitializedDatabase && !hasStoredPassword) {
+    throw new Error('The existing PostgreSQL database is present, but its saved database password is missing. Refusing to generate a new password or modify existing database data.');
+  }
+  const password = hasStoredPassword ? fs.readFileSync(dbPasswordPath, 'utf8').trim() : randomBytes(32).toString('hex');
+  if (!password) throw new Error('The saved PostgreSQL password file is empty. Refusing to continue.');
   const env = { ...process.env, PATH: bin + ';' + path.join(postgresRoot, 'lib') + ';' + (process.env.PATH || '') };
-  if (!fs.existsSync(dbPasswordPath)) fs.writeFileSync(dbPasswordPath, password, { mode: 0o600 });
+  if (!hasStoredPassword) fs.writeFileSync(dbPasswordPath, password, { mode: 0o600 });
 
   if (!fs.existsSync(path.join(dataRoot, 'PG_VERSION'))) {
     await setStatus('Initializing the hospital database…', 'This happens only once on this computer.');
@@ -158,7 +172,7 @@ async function startDatabase() {
       log('ERROR', 'PostgreSQL stopped unexpectedly', postgresStartupError);
     }
   });
-  await waitForDatabase(pgIsReady, password, env);
+  await waitForDatabase(psql, password, env);
 
   return 'postgresql://hms:' + encodeURIComponent(password) + '@127.0.0.1:55432/hms?schema=public';
 }
