@@ -13,12 +13,15 @@ Patient profile editing UI connected to the existing `PATCH /api/patients/:id` e
 ## Last completed task
 Inventory stock adjustment API with dedicated permission, optimistic concurrency guard, movement record and audit event; integration test covers forbidden and successful adjustment. Commit: `1e5ba34d589a283e39e3cad6f39b4c15b89a72eb` (CI pending at state update).
 
+## Last verified increment
+Integration-test teardown order fixed: appointment fixture is deleted before its referenced patient. Commit `eadd36a14ce023ec5a85815008b4b8a432e83f72`; GitHub Actions run `43138252309` completed successfully.
+
 ## Current active task
-Fix integration-test teardown ordering: delete the appointment fixture before deleting its referenced patient. The appointment API test itself passed; the after-hook failed due to a foreign-key constraint.
+Appointment management UI: create appointments, list the next 7 days, confirm, reschedule, cancel, check in and complete, with permission-gated actions.
 
 ## Pending tasks (priority order)
 1. Verify the patient profile editing increment through GitHub Actions; fix any build/test failure.
-2. Verify appointment lifecycle integration tests and CI; then build appointment UI and inventory movement history.
+2. Verify appointment lifecycle and inventory API CI; implement inventory stock count UI and movement history.
 3. Implement appointment reschedule/status/cancel lifecycle and UI.
 4. Complete doctor deactivate/reactivate workflow.
 5. Implement department administration.
@@ -53,4 +56,4 @@ GitHub Actions run `43137138590` on commit `7072d48eee5caa5accd369d22601ec27e5a8
 - No real patient data may be used.
 
 ## Exact next action
-Commit corrected teardown order and state, then verify CI on the new head. If green, continue appointment UI and inventory movement history.
+Commit the appointment UI and its progress documentation. Verify frontend build and backend CI; fix any failures. Then implement inventory batch count UI and movement history.

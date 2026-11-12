@@ -17,3 +17,5 @@ All notable project increments are recorded here.
 - Corrected operation stock integration expectations to include the prior physical-count adjustment (6 counted, 2 consumed, 4 remaining, 6 restored).
 
 - Fixed integration-test fixture teardown order so appointment records are deleted before their referenced patient, avoiding a PostgreSQL foreign-key violation.
+
+- Added Arabic/English appointment management UI for booking, confirmation, rescheduling, cancellation, check-in and completion; actions are permission-gated and refresh the live API list.

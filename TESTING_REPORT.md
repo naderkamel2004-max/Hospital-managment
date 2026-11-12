@@ -44,3 +44,7 @@ The inventory-adjustment CI run exposed a stale expectation in the pre-existing 
 
 ## Teardown failure found in CI
 The inventory and appointment assertions executed, but the integration test after-hook failed because it attempted to delete the patient before deleting the appointment referencing that patient. The fixture cleanup order is corrected to delete the appointment first. CI must be rerun to verify teardown succeeds.
+
+
+## Appointment management UI increment
+Added the appointment screen with live API integration and permission-gated creation/status actions. The screen loads patient, doctor and department choices only when appointment creation is permitted. Frontend build and CI for this increment are pending.
