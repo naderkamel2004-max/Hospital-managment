@@ -13,6 +13,14 @@ let role;
 let permission;
 let operationsPermission;
 let operationsCreatePermission;
+let operationsUpdatePermission;
+let department;
+let patient;
+let doctor;
+let operationType;
+let product;
+let stockItem;
+let createdOperationId;
 let user;
 let accessToken;
 
@@ -28,18 +36,29 @@ before(async () => {
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsPermission.id }});
   operationsCreatePermission = await prisma.permission.create({ data: { code: 'operations.create', description: 'Create operations for validation integration test' }});
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsCreatePermission.id }});
+  operationsUpdatePermission = await prisma.permission.create({ data: { code: 'operations.update', description: 'Update operations for stock reversal integration test' }});
+  await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsUpdatePermission.id }});
   user = await prisma.user.create({ data: {
     email, fullName: 'CI Integration User', passwordHash: await bcrypt.hash(password, 4), roleId: role.id
   }});
 });
 
 after(async () => {
+  if (createdOperationId) await prisma.operation.deleteMany({ where: { id: createdOperationId }});
+  if (product) await prisma.stockMovement.deleteMany({ where: { productId: product.id }});
+  if (stockItem) await prisma.stockItem.deleteMany({ where: { id: stockItem.id }});
+  if (product) await prisma.product.deleteMany({ where: { id: product.id }});
+  if (patient) await prisma.patient.deleteMany({ where: { id: patient.id }});
+  if (doctor) await prisma.doctor.deleteMany({ where: { id: doctor.id }});
+  if (department) await prisma.department.deleteMany({ where: { id: department.id }});
+  if (operationType) await prisma.operationType.deleteMany({ where: { id: operationType.id }});
   if (user) await prisma.user.deleteMany({ where: { id: user.id }});
   if (role) await prisma.rolePermission.deleteMany({ where: { roleId: role.id }});
   if (role) await prisma.role.deleteMany({ where: { id: role.id }});
   if (permission) await prisma.permission.deleteMany({ where: { id: permission.id }});
   if (operationsPermission) await prisma.permission.deleteMany({ where: { id: operationsPermission.id }});
   if (operationsCreatePermission) await prisma.permission.deleteMany({ where: { id: operationsCreatePermission.id }});
+  if (operationsUpdatePermission) await prisma.permission.deleteMany({ where: { id: operationsUpdatePermission.id }});
   await prisma.$disconnect();
 });
 
@@ -69,6 +88,23 @@ test('login, live permission revocation, and account lockout are enforced', asyn
     .send({ operationNo: 'CI-CANCELLED', patientId: 'not-used', doctorId: 'not-used', operationTypeId: 'not-used', scheduledAt: new Date().toISOString(), status: 'CANCELLED' })
     .expect(400);
   assert.equal(cancelledCreate.body.error, 'Invalid operation data');
+  department = await prisma.department.create({ data: { code: 'CI_DEPT_' + suffix, nameAr: 'اختبار', nameEn: 'CI Test' }});
+  patient = await prisma.patient.create({ data: { medicalRecordNo: 'CI-' + suffix, firstName: 'Test', lastName: 'Patient' }});
+  doctor = await prisma.doctor.create({ data: { fullName: 'CI Test Doctor', departmentId: department.id }});
+  operationType = await prisma.operationType.create({ data: { code: 'CI_OP_' + suffix, nameAr: 'عملية اختبار', nameEn: 'CI Test Operation' }});
+  product = await prisma.product.create({ data: { sku: 'CI-SKU-' + suffix, nameAr: 'شاش اختبار', nameEn: 'CI Gauze', category: 'CONSUMABLE', unit: 'piece', purchasePrice: 2 }});
+  stockItem = await prisma.stockItem.create({ data: { productId: product.id, batchNo: 'CI-BATCH-' + suffix, unitCost: 2, quantity: 5 }});
+  const created = await request(app).post('/api/operations').set('Authorization', 'Bearer ' + accessToken).send({ operationNo: 'CI-OP-' + suffix, patientId: patient.id, doctorId: doctor.id, operationTypeId: operationType.id, scheduledAt: new Date().toISOString(), items: [{ productId: product.id, quantity: 2 }] }).expect(201);
+  createdOperationId = created.body.item.id;
+  let currentStock = await prisma.stockItem.findUnique({ where: { id: stockItem.id }});
+  assert.equal(Number(currentStock.quantity), 3);
+  await request(app).patch('/api/operations/' + createdOperationId + '/status').set('Authorization', 'Bearer ' + accessToken).send({ status: 'IN_PROGRESS' }).expect(200);
+  await request(app).patch('/api/operations/' + createdOperationId + '/status').set('Authorization', 'Bearer ' + accessToken).send({ status: 'CANCELLED' }).expect(200);
+  currentStock = await prisma.stockItem.findUnique({ where: { id: stockItem.id }});
+  assert.equal(Number(currentStock.quantity), 5);
+  const movements = await prisma.stockMovement.findMany({ where: { referenceId: createdOperationId }});
+  assert.equal(movements.length, 2);
+  assert.deepEqual(movements.map(x => x.movementType).sort(), ['OPERATION_CANCELLATION', 'OPERATION_CONSUMPTION']);
 
   await prisma.rolePermission.delete({ where: {
     roleId_permissionId: { roleId: role.id, permissionId: permission.id }
