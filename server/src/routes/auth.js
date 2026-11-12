@@ -14,12 +14,14 @@ authRouter.post('/login', async (req, res, next) => {
     const email = parsed.data.email.trim().toLowerCase();
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { role: { include: { permissions: { include: { permission: true } } } } }
+      include: { role: { include: { permissions: { include: { permission: true } } } }, userPermissions: { include: { permission: true } } }
     });
     if (!user || !user.isActive || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-    const permissions = user.role.permissions.map((item) => item.permission.code);
+    const permissionMap = new Map(user.role.permissions.map((item) => [item.permission.code, true]));
+    for (const override of user.userPermissions) permissionMap.set(override.permission.code, override.allowed);
+    const permissions = [...permissionMap].filter(([, allowed]) => allowed).map(([code]) => code);
     const accessToken = jwt.sign(
       { role: user.role.code, permissions },
       process.env.JWT_ACCESS_SECRET,

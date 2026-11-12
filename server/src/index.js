@@ -8,6 +8,9 @@ import { requireAuth } from './middleware/auth.js';
 import { patientsRouter } from './routes/patients.js';
 import { departmentsRouter } from './routes/departments.js';
 import { appointmentsRouter } from './routes/appointments.js';
+import { operationsRouter } from './routes/operations.js';
+import { doctorsRouter } from './routes/doctors.js';
+import { dashboardRouter } from './routes/dashboard.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -18,6 +21,9 @@ app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHe
 app.use('/api/patients', patientsRouter);
 app.use('/api/departments', departmentsRouter);
 app.use('/api/appointments', appointmentsRouter);
+app.use('/api/operations', operationsRouter);
+app.use('/api/doctors', doctorsRouter);
+app.use('/api/dashboard', dashboardRouter);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'hms-api' }));
 app.get('/api/me', requireAuth, (req, res) => res.json({ user: req.user }));
 app.use((err, _req, res, _next) => {
