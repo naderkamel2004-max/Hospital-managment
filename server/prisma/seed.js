@@ -8,7 +8,9 @@ const permissions=[
   ['departments.read','Read departments'],['appointments.read','Read appointments'],['appointments.create','Create appointments'],
   ['doctors.read','Read doctors'],['doctors.create','Create doctors'],
   ['operations.read','Read operations'],['operations.create','Create operations'],['operations.update','Update operations'],['operations.manage_types','Manage operation types'],['operations.costs.read','Read operation financial costs'],
-  ['dashboard.read','Read dashboard analytics']
+  ['dashboard.read','Read dashboard analytics'],
+  ['inventory.read','Read inventory'],['inventory.manage','Manage inventory products'],['inventory.receive','Receive stock batches'],
+  ['users.manage','Manage users']
 ];
 
 async function main(){
