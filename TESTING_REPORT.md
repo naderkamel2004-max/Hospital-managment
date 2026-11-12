@@ -36,3 +36,7 @@ The patient-profile editing UI increment added after the run above still require
 
 ## New increment awaiting CI
 Inventory adjustment API and integration coverage were added after the last successful run. The integration test checks denial without `inventory.adjust`, successful count correction from 5 to 6, and creation of a `STOCK_ADJUSTMENT` movement. This code has not been locally executed; await GitHub Actions for validation.
+
+
+## Failure analysis and correction
+The inventory-adjustment CI run exposed a stale expectation in the pre-existing operation stock test: the new physical count raised the initial batch from 5 to 6, so consuming 2 leaves 4 (not 3), and cancellation restores 6 (not 5). The assertions were corrected to reflect the actual ledger sequence. This is a test-fixture expectation correction, not a production-code workaround; rerun CI is required.

@@ -13,3 +13,5 @@ All notable project increments are recorded here.
 - Added inventory adjustment endpoint using an optimistic quantity check, immutable stock movement and audit event; introduced `inventory.adjust` permission and integration coverage.
 
 - Added appointment rescheduling and controlled status transitions with resource-scope enforcement, exact-time doctor collision detection, optimistic concurrency and audit logging; added `appointments.update` permission and integration coverage.
+
+- Corrected operation stock integration expectations to include the prior physical-count adjustment (6 counted, 2 consumed, 4 remaining, 6 restored).

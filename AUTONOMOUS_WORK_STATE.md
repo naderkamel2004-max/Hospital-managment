@@ -14,7 +14,7 @@ Patient profile editing UI connected to the existing `PATCH /api/patients/:id` e
 Inventory stock adjustment API with dedicated permission, optimistic concurrency guard, movement record and audit event; integration test covers forbidden and successful adjustment. Commit: `1e5ba34d589a283e39e3cad6f39b4c15b89a72eb` (CI pending at state update).
 
 ## Current active task
-Appointment lifecycle API: permission-gated rescheduling and status transitions, scoped lookup, optimistic concurrency check, collision check for exact doctor/time slots, and audit logging.
+Resolve CI regression caused by extending the stock-consumption test: account for the new +1 physical-count adjustment (expected stock 4 after consumption, 6 after cancellation). Then verify appointment and inventory increments together.
 
 ## Pending tasks (priority order)
 1. Verify the patient profile editing increment through GitHub Actions; fix any build/test failure.
@@ -53,4 +53,4 @@ GitHub Actions run `43137138590` on commit `7072d48eee5caa5accd369d22601ec27e5a8
 - No real patient data may be used.
 
 ## Exact next action
-Commit the appointment lifecycle API, permission seed and PostgreSQL integration coverage together with updated state. Check the inventory CI run and the new appointment CI run; inspect logs and fix any failure.
+Commit the corrected stock assertions and state. Verify the new CI run on the resulting head; inspect any remaining failing job logs and fix them before further features.
