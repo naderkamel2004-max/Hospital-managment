@@ -1,0 +1,23 @@
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { authRouter } from './routes/auth.js';
+import { requireAuth } from './middleware/auth.js';
+
+const app = express();
+app.disable('x-powered-by');
+app.use(helmet());
+app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') ?? 'http://localhost:5173', credentials: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false }), authRouter);
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'hms-api' }));
+app.get('/api/me', requireAuth, (req, res) => res.json({ user: req.user }));
+app.use((err, _req, res, _next) => {
+  const status = Number.isInteger(err.status) ? err.status : 500;
+  if (status >= 500) console.error(err);
+  res.status(status).json({ error: status >= 500 ? 'Internal server error' : err.message });
+});
+const port = Number(process.env.PORT || 4000);
+app.listen(port, () => console.log(`HMS API listening on :${port}`));
