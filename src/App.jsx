@@ -16,6 +16,7 @@ export default function App() {
  const [lang,setLang]=useState('ar');
  const [token,setToken]=useState('');
  const [user,setUser]=useState(null);
+ const [permissions,setPermissions]=useState([]);
  const [active,setActive]=useState('dashboard');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -28,7 +29,7 @@ export default function App() {
  useEffect(()=>{document.documentElement.lang=lang;document.documentElement.dir=rtl?'rtl':'ltr';document.body.dir=rtl?'rtl':'ltr';},[lang,rtl]);
  async function signIn(e) {
   e.preventDefault();setBusy(true);setError('');
-  try { const result=await apiRequest('/api/auth/login',{method:'POST',body:{email,password}});setToken(result.accessToken);setUser(result.user); }
+  try { const result=await apiRequest('/api/auth/login',{method:'POST',body:{email,password}});const session=await apiRequest('/api/me',{token:result.accessToken});setPermissions(session.user.permissions||[]);setToken(result.accessToken);setUser({...result.user,role:session.user.role}); }
   catch { setError(t.loginError); } finally { setBusy(false); }
  }
  async function load(section) {
@@ -39,7 +40,7 @@ export default function App() {
   finally { setLoading(false); }
  }
  useEffect(()=>{if(token)load(active);},[token,active]);
- function logout(){setToken('');setUser(null);setData(null);setActive('dashboard');setError('');}
+ function logout(){setToken('');setUser(null);setPermissions([]);setData(null);setActive('dashboard');setError('');}
  if(!token) return <div className="login-screen" dir={rtl?'rtl':'ltr'}>
   <form className="login-card" onSubmit={signIn}>
    <div className="brand-symbol"><HeartPulse size={30}/></div><h1>{t.title}</h1><p>{t.subtitle}</p>
@@ -56,7 +57,7 @@ export default function App() {
  return <div className="app" dir={rtl?'rtl':'ltr'}>
   <aside className="sidebar"><div className="brand"><span className="brand-symbol"><HeartPulse/></span><div><b>{t.title}</b><small>{t.subtitle}</small></div></div>
    <div className="nav-title">{rtl?'القائمة الرئيسية':'MAIN MENU'}</div>
-   {nav.map(([id,key,Icon])=><button key={id} className={active===id?'nav-link selected':'nav-link'} onClick={()=>{setActive(id);setQuery('');}}><Icon size={18}/>{t[key]}</button>)}
+   {nav.filter(([id])=>id==='dashboard'?permissions.includes('dashboard.read')||user?.role==='SUPER_ADMIN':id==='users'?user?.role==='SUPER_ADMIN':permissions.includes(({operations:'operations.read',patients:'patients.read',doctors:'doctors.read',inventory:'inventory.read'})[id])).map(([id,key,Icon])=><button key={id} className={active===id?'nav-link selected':'nav-link'} onClick={()=>{setActive(id);setQuery('');}}><Icon size={18}/>{t[key]}</button>)}
    <div className="sidebar-foot"><ShieldCheck size={16}/>{rtl?'جلسة آمنة':'Secure session'}</div>
   </aside>
   <main className="main"><header className="topbar"><span>{t.dashboard} / {t[active]}</span><div className="top-actions"><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search}/></label><button className="secondary" onClick={()=>setLang(rtl?'en':'ar')}><Languages size={16}/>{t.language}</button><div className="user"><b>{user?.fullName||'—'}</b><small>{user?.role||'—'}</small></div><button className="secondary" onClick={logout}><LogOut size={16}/>{t.logout}</button></div></header>
