@@ -1,23 +1,17 @@
-name: Generate Initial Database Migration
+name: Initial Migration Generator
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'server/prisma/schema.prisma'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  generate:
+  verify-initial-migration:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -30,24 +24,15 @@ jobs:
         env:
           DATABASE_URL: postgresql://hms:password@localhost:5432/hms?schema=public
         run: npx prisma validate
-      - name: Generate initial migration SQL
+      - name: Verify committed initial migration exists
+        run: |
+          test -s server/prisma/migrations/migration_lock.toml
+          test -s server/prisma/migrations/20261112010000_init/migration.sql
+      - name: Verify schema and migration are in sync
         working-directory: server
         run: |
-          mkdir -p prisma/migrations/20261112010000_init
           npx prisma migrate diff \
             --from-empty \
             --to-schema-datamodel prisma/schema.prisma \
-            --script > prisma/migrations/20261112010000_init/migration.sql
-          test -s prisma/migrations/20261112010000_init/migration.sql
-          printf 'provider = "postgresql"\n' > prisma/migrations/migration_lock.toml
-      - name: Commit generated migration
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server/prisma/migrations
-          if git diff --cached --quiet; then
-            echo "No migration changes to commit."
-            exit 0
-          fi
-          git commit -m "db: add versioned initial PostgreSQL migration"
-          git push origin HEAD:main
+            --script > /tmp/expected-migration.sql
+          diff -u prisma/migrations/20261112010000_init/migration.sql /tmp/expected-migration.sql
