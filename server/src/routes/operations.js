@@ -118,7 +118,8 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
    normalized.push({...entry,itemName:product.nameAr,unit:product.unit,category:product.category,purchaseUnitPrice:Number((totalValue/entry.quantity).toFixed(4))});
   }
   const totals=calculate(normalized);
-  const created=await tx.operation.create({data:{...data,...totals,createdById:req.user.id,items:{create:totals.lines.map(({itemName,unit,...line})=>({...line,itemNameSnapshot:itemName,unitSnapshot:unit}))}},include});
+  const {lines,...costTotals}=totals;
+  const created=await tx.operation.create({data:{...data,...costTotals,createdById:req.user.id,items:{create:lines.map(({itemName,unit,...line})=>({...line,itemNameSnapshot:itemName,unitSnapshot:unit}))}},include});
   if(movements.length)await tx.stockMovement.createMany({data:movements.map(m=>({...m,referenceType:'Operation',referenceId:created.id}))});
   await tx.auditLog.create({data:{userId:req.user.id,action:'OPERATION_CREATED',entity:'Operation',entityId:created.id,ipAddress:req.ip,afterData:{operationNo:created.operationNo,totalCost:totals.totalCost,itemCount:items.length}}});
   return created;
