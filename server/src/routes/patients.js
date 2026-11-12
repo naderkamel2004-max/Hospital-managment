@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
+import { patientScopeWhere, combineWhere } from '../lib/access-scopes.js';
 
 export const patientsRouter = Router();
 patientsRouter.use(requireAuth);
@@ -30,22 +31,17 @@ patientsRouter.get('/', requirePermission('patients.read'), async (req,res,next)
       { lastName:{contains:q, mode:'insensitive'} },
       { phone:{contains:q, mode:'insensitive'} }
     ] } : {};
-    if(req.user.role!=='SUPER_ADMIN'){
-      const patientScopes=req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId);
-      const doctorScopes=req.user.scopes.filter(x=>x.resource==='doctor').map(x=>x.resourceId);
-      if(patientScopes.length)where.id={in:patientScopes};
-      if(doctorScopes.length)where.operations={some:{doctorId:{in:doctorScopes}}};
-    }
+    const scopedWhere=combineWhere(where,patientScopeWhere(req.user));
     const [items,total] = await prisma.$transaction([
-      prisma.patient.findMany({where,select,orderBy:{createdAt:'desc'},skip:(page-1)*pageSize,take:pageSize}),
-      prisma.patient.count({where})
+      prisma.patient.findMany({where:scopedWhere,select,orderBy:{createdAt:'desc'},skip:(page-1)*pageSize,take:pageSize}),
+      prisma.patient.count({where:scopedWhere})
     ]);
     res.json({items,pagination:{page,pageSize,total,totalPages:Math.ceil(total/pageSize)}});
   } catch(error){next(error);}
 });
 patientsRouter.get('/:id', requirePermission('patients.read'), async(req,res,next)=>{
   try {
-    const patient=await prisma.patient.findUnique({where:{id:req.params.id,...(req.user.role!=='SUPER_ADMIN'&&req.user.scopes.some(x=>x.resource==='patient')?{id:{in:req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId)}}:{})},select:{...select,appointments:{orderBy:{startsAt:'desc'},take:10,select:{id:true,startsAt:true,status:true,reason:true,doctor:{select:{fullName:true}},department:{select:{nameAr:true,nameEn:true}}}},encounters:{orderBy:{startedAt:'desc'},take:10,select:{id:true,startedAt:true,status:true,diagnosis:true}},operations:{orderBy:{scheduledAt:'desc'},take:50,include:{doctor:{select:{id:true,fullName:true}},operationType:{select:{nameAr:true,nameEn:true}},items:true}}}});
+    const patient=await prisma.patient.findFirst({where:combineWhere({id:req.params.id},patientScopeWhere(req.user)),select:{...select,appointments:{orderBy:{startsAt:'desc'},take:10,select:{id:true,startsAt:true,status:true,reason:true,doctor:{select:{fullName:true}},department:{select:{nameAr:true,nameEn:true}}}},encounters:{orderBy:{startedAt:'desc'},take:10,select:{id:true,startedAt:true,status:true,diagnosis:true}},operations:{orderBy:{scheduledAt:'desc'},take:50,include:{doctor:{select:{id:true,fullName:true}},operationType:{select:{nameAr:true,nameEn:true}},items:true}}}});
     if(!patient) return res.status(404).json({error:'Patient not found'});
     if(req.user.role!=='SUPER_ADMIN'&&!req.user.permissions.includes('operations.costs.read')){
       patient.operations=patient.operations.map(({totalCost,consumablesCost,medicationsCost,otherCost,...operation})=>({...operation,items:operation.items.map(({purchaseUnitPrice,sellingUnitPrice,lineCost,...line})=>line)}));
@@ -71,7 +67,9 @@ patientsRouter.patch('/:id', requirePermission('patients.update'), async(req,res
     const parsed=patientInput.partial().safeParse(req.body);
     if(!parsed.success||Object.keys(parsed.data||{}).length===0) return res.status(400).json({error:'Invalid patient update',details:parsed.error?.flatten()});
     const item=await prisma.$transaction(async tx=>{
-      const updated=await tx.patient.update({where:{id:req.params.id},data:parsed.data,select});
+      const visible=await tx.patient.findFirst({where:combineWhere({id:req.params.id},patientScopeWhere(req.user)),select:{id:true}});
+      if(!visible)throw Object.assign(new Error('Patient not found'),{code:'P2025'});
+      const updated=await tx.patient.update({where:{id:visible.id},data:parsed.data,select});
       await tx.auditLog.create({data:{userId:req.user.id,action:'PATIENT_UPDATED',entity:'Patient',entityId:updated.id,ipAddress:req.ip}});
       return updated;
     });
