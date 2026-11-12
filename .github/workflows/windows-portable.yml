@@ -41,8 +41,12 @@ jobs:
           $url = "https://get.enterprisedb.com/postgresql/postgresql-17.6-1-windows-x64-binaries.zip"
           Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\postgres.zip"
           Expand-Archive -Path "$env:RUNNER_TEMP\postgres.zip" -DestinationPath "$env:RUNNER_TEMP\postgres"
-          New-Item -ItemType Directory -Force -Path "build-resources\postgres" | Out-Null
-          Copy-Item "$env:RUNNER_TEMP\postgres\pgsql\*" "build-resources\postgres" -Recurse -Force
+          $pgSource = Join-Path $env:RUNNER_TEMP "postgres\pgsql"
+          $pgTarget = "build-resources\postgres"
+          New-Item -ItemType Directory -Force -Path $pgTarget | Out-Null
+          foreach ($folder in @("bin", "lib", "share")) {
+            Copy-Item (Join-Path $pgSource $folder) $pgTarget -Recurse -Force
+          }
       - name: Download bundled Node.js runtime
         shell: pwsh
         run: |
@@ -66,6 +70,14 @@ jobs:
                 $log = Join-Path $testData "startup.log"
                 if (Test-Path $log) { Get-Content $log | Write-Host }
                 throw "Hospital Management exited before the API became healthy. Exit code: $($process.ExitCode)"
+              }
+              $log = Join-Path $testData "startup.log"
+              if (Test-Path $log) {
+                $logText = Get-Content $log -Raw
+                if ($logText -match "FATAL:") {
+                  Write-Host $logText
+                  throw "Hospital Management reported a fatal startup error."
+                }
               }
               try {
                 $health = Invoke-RestMethod -Uri "http://127.0.0.1:4000/api/health" -TimeoutSec 3
