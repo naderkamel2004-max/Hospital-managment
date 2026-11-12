@@ -23,3 +23,5 @@ All notable project increments are recorded here.
 - Added inventory movement history API and UI, plus per-batch physical count correction with reason capture and permission-gated submission. Zero-quantity batches remain visible for reconciliation.
 
 - Added department create/update/deactivate API with normalized unique codes, strict validation, dedicated `departments.manage` permission and audit records; added integration coverage for permission enforcement and update.
+
+- Added department administration UI for create/edit/activate/deactivate with live API integration and permission-gated controls.

@@ -22,8 +22,11 @@ Appointment management UI committed in `a46ec8a8a0af955a981d13cf0639eab52d025358
 ## Last completed increment
 Inventory movement history API and batch count/movement UI added; CI pending on commit `e1f56fbf918b19e59606f8ec255de6b11895a132`.
 
+## Last completed increment
+Department create/update/deactivate API with `departments.manage`, validation, duplicate-code handling, audit events and integration coverage. Commit `dd7ad0a4c632199c77f22e52c2eee762f8194cc0`; its CI result is being checked.
+
 ## Current active task
-Department administration API: create/update/deactivate, validation, uniqueness handling and audit logging; integration test verifies permission enforcement and update.
+Department administration UI for creating, editing, activating/deactivating departments, and showing doctor/patient counts.
 
 ## Pending tasks (priority order)
 1. Verify the patient profile editing increment through GitHub Actions; fix any build/test failure.

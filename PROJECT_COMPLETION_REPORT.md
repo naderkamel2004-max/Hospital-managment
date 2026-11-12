@@ -20,14 +20,14 @@ The repository contains a working development foundation with an authenticated R
 | Surgical operations | 65% | Create, FIFO stock consumption, status changes, cancellation reversal and analytics; full detail/edit and wider workflow acceptance remain |
 | Inventory | 60% | Product catalog, receipts, count adjustment API/UI, movement history and operation consumption/reversal; transfers, returns and workflow acceptance remain |
 | Appointments | 55% | Read/create/update APIs, scoped status lifecycle and appointment management UI; broader schedule views and workflow acceptance remain |
-| Departments | 45% | Read and create/update/deactivate API with permission and audit foundation; admin UI and assignment workflows remain |
+| Departments | 70% | Read/create/update/deactivate API and bilingual admin UI; staff assignment workflows and acceptance remain |
 | Users, roles and permissions UI | 25% | Backend authorization foundation and user listing; full administration and scope editor remain |
 | Reports and analytics | 30% | Dashboard and operation analytics foundations; report catalog, exports and validation remain |
 | System Studio | 15% | Backend foundation exists; complete settings and dashboard configuration UI remain |
 | Admissions, encounters, prescriptions, labs, billing | 5% | Core schema foundations only; operational workflows remain |
 | Security, backup and deployment readiness | 15% | Baseline hardening and CI; threat review, backup/restore drills, monitoring, deployment and acceptance remain |
 
-**Overall estimated completion: 40%.** This is a planning estimate across the full agreed system scope; it must not be interpreted as production readiness.
+**Overall estimated completion: 41%.** This is a planning estimate across the full agreed system scope; it must not be interpreted as production readiness.
 
 ## Latest verified increment
 

@@ -15,7 +15,7 @@ This roadmap is ordered by dependencies and operational risk. Update it when an 
 - [ ] Operation detail, edit safeguards and complete UI
 - [ ] Doctor deactivate/reactivate with audit trail
 - [x] Inventory adjustment API with count-based quantity correction, concurrency guard, movement and audit records (CI verification pending)\n- [x] Inventory stock count UI and movement history (CI pending)\n- [ ] Inventory returns and transfers
-- [x] Department create/update/deactivate API with validation, permission and audit log (CI pending)\n- [ ] Department administration UI and assignment workflows
+- [x] Department create/update/deactivate API with validation, permission and audit log (CI pending)\n- [x] Department administration UI for create/edit/activate/deactivate (CI pending)\n- [ ] Doctor and patient department assignment workflows
 - [ ] Admission, discharge, transfer, ward and bed management
 
 ## Phase 2 — Administration and reporting
