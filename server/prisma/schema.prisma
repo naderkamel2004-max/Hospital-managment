@@ -79,6 +79,10 @@ model User {
   roleId String
   role Role @relation(fields: [roleId], references: [id])
   auditLogs AuditLog[]
+  userPermissions UserPermission[]
+  scopes UserScope[]
+  dashboardPreferences DashboardPreference[]
+  preferredLanguage String @default("ar")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -100,6 +104,7 @@ model Doctor {
   departmentId String
   department Department @relation(fields: [departmentId], references: [id])
   appointments Appointment[]
+  operations Operation[]
 }
 model Patient {
   id String @id @default(cuid())
@@ -115,6 +120,7 @@ model Patient {
   departmentId String?
   department Department? @relation(fields: [departmentId], references: [id])
   appointments Appointment[]
+  operations Operation[]
   encounters Encounter[]
   admissions Admission[]
   prescriptions Prescription[]
@@ -171,6 +177,7 @@ model Product {
   reorderLevel Int @default(0)
   stockItems StockItem[]
   prescriptionItems PrescriptionItem[]
+  operationItems OperationItem[]
 }
 model StockItem {
   id String @id @default(cuid())
@@ -231,7 +238,117 @@ model AuditLog {
   entity String
   entityId String?
   ipAddress String?
+  beforeData Json?
+  afterData Json?
   createdAt DateTime @default(now())
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+
+enum OperationStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ItemCategory {
+  MEDICATION
+  CONSUMABLE
+  OTHER
+}
+
+model OperationType {
+  id String @id @default(cuid())
+  code String @unique
+  nameAr String
+  nameEn String
+  isDelivery Boolean @default(false)
+  isCesarean Boolean @default(false)
+  isActive Boolean @default(true)
+  operations Operation[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Operation {
+  id String @id @default(cuid())
+  operationNo String @unique
+  patientId String
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctorId String
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+  operationTypeId String
+  operationType OperationType @relation(fields: [operationTypeId], references: [id])
+  scheduledAt DateTime
+  startedAt DateTime?
+  endedAt DateTime?
+  status OperationStatus @default(SCHEDULED)
+  notes String?
+  items OperationItem[]
+  consumablesCost Decimal @default(0) @db.Decimal(14,2)
+  medicationsCost Decimal @default(0) @db.Decimal(14,2)
+  otherCost Decimal @default(0) @db.Decimal(14,2)
+  totalCost Decimal @default(0) @db.Decimal(14,2)
+  createdById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([scheduledAt, doctorId])
+  @@index([patientId, scheduledAt])
+  @@index([operationTypeId, scheduledAt])
+}
+
+model OperationItem {
+  id String @id @default(cuid())
+  operationId String
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  productId String?
+  product Product? @relation(fields: [productId], references: [id])
+  itemNameSnapshot String
+  category ItemCategory
+  unitSnapshot String
+  quantity Decimal @db.Decimal(12,3)
+  purchaseUnitPrice Decimal @db.Decimal(14,2)
+  sellingUnitPrice Decimal? @db.Decimal(14,2)
+  lineCost Decimal @db.Decimal(14,2)
+  createdAt DateTime @default(now())
+  @@index([operationId])
+  @@index([itemNameSnapshot])
+}
+
+model UserPermission {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  allowed Boolean @default(true)
+  @@unique([userId, permissionId])
+}
+
+model UserScope {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource String
+  resourceId String
+  @@unique([userId, resource, resourceId])
+  @@index([resource, resourceId])
+}
+
+model DashboardPreference {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  layout Json
+  isDefault Boolean @default(false)
+  updatedAt DateTime @updatedAt
+  @@unique([userId])
+}
+
+model SystemSetting {
+  key String @id
+  value Json
+  updatedAt DateTime @updatedAt
 }
