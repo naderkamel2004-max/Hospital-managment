@@ -19,3 +19,5 @@ All notable project increments are recorded here.
 - Fixed integration-test fixture teardown order so appointment records are deleted before their referenced patient, avoiding a PostgreSQL foreign-key violation.
 
 - Added Arabic/English appointment management UI for booking, confirmation, rescheduling, cancellation, check-in and completion; actions are permission-gated and refresh the live API list.
+
+- Added inventory movement history API and UI, plus per-batch physical count correction with reason capture and permission-gated submission. Zero-quantity batches remain visible for reconciliation.

@@ -8,7 +8,7 @@ const protectProduct=(product,allowed)=>{if(allowed)return product;const {purcha
 inventoryRouter.use(requireAuth);
 inventoryRouter.get('/products',requirePermission('inventory.read'),async(req,res,next)=>{try{
  const q=typeof req.query.q==='string'?req.query.q.trim().slice(0,100):'';
- const items=await prisma.product.findMany({where:{isActive:true,...(q?{OR:[{sku:{contains:q,mode:'insensitive'}},{nameAr:{contains:q,mode:'insensitive'}},{nameEn:{contains:q,mode:'insensitive'}}]}:{})},include:{stockItems:{where:{quantity:{gt:0}},select:{id:true,batchNo:true,expiryDate:true,quantity:true,unitCost:true}}},orderBy:{nameAr:'asc'},take:500});
+ const items=await prisma.product.findMany({where:{isActive:true,...(q?{OR:[{sku:{contains:q,mode:'insensitive'}},{nameAr:{contains:q,mode:'insensitive'}},{nameEn:{contains:q,mode:'insensitive'}}]}:{})},include:{stockItems:{select:{id:true,batchNo:true,expiryDate:true,quantity:true,unitCost:true}}},orderBy:{nameAr:'asc'},take:500});
  res.json({items:items.map(p=>protectProduct({...p,onHand:p.stockItems.reduce((n,b)=>n+Number(b.quantity),0)},canReadInventoryCosts(req.user)))});
 }catch(error){next(error);}});
 inventoryRouter.post('/products',requirePermission('inventory.manage'),async(req,res,next)=>{try{

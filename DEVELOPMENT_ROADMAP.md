@@ -14,7 +14,7 @@ This roadmap is ordered by dependencies and operational risk. Update it when an 
 - [x] Appointment reschedule/status/cancel API with scope checks, concurrency protection and audit trail (CI verification pending)\n- [x] Appointment create/reschedule/status/cancel UI and schedule conflict feedback (frontend CI pending)
 - [ ] Operation detail, edit safeguards and complete UI
 - [ ] Doctor deactivate/reactivate with audit trail
-- [x] Inventory adjustment API with count-based quantity correction, concurrency guard, movement and audit records (CI verification pending)\n- [ ] Inventory stock count UI, movement history, returns and transfers
+- [x] Inventory adjustment API with count-based quantity correction, concurrency guard, movement and audit records (CI verification pending)\n- [x] Inventory stock count UI and movement history (CI pending)\n- [ ] Inventory returns and transfers
 - [ ] Department CRUD and assignment workflows
 - [ ] Admission, discharge, transfer, ward and bed management
 

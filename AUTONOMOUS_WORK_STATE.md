@@ -16,8 +16,11 @@ Inventory stock adjustment API with dedicated permission, optimistic concurrency
 ## Last verified increment
 Integration-test teardown order fixed: appointment fixture is deleted before its referenced patient. Commit `eadd36a14ce023ec5a85815008b4b8a432e83f72`; GitHub Actions run `43138252309` completed successfully.
 
+## Last completed increment
+Appointment management UI committed in `a46ec8a8a0af955a981d13cf0639eab52d025358`; CI run `43139173910` must be checked for completion before claiming validation.
+
 ## Current active task
-Appointment management UI: create appointments, list the next 7 days, confirm, reschedule, cancel, check in and complete, with permission-gated actions.
+Inventory operations UI: physical count inputs per stock batch, reason capture, permission-gated count adjustments and stock movement history.
 
 ## Pending tasks (priority order)
 1. Verify the patient profile editing increment through GitHub Actions; fix any build/test failure.
@@ -56,4 +59,4 @@ GitHub Actions run `43137138590` on commit `7072d48eee5caa5accd369d22601ec27e5a8
 - No real patient data may be used.
 
 ## Exact next action
-Commit the appointment UI and its progress documentation. Verify frontend build and backend CI; fix any failures. Then implement inventory batch count UI and movement history.
+Commit the inventory movement endpoint and batch count/movement UI. Verify CI; fix any frontend/backend failure, then continue with doctor lifecycle and department CRUD.

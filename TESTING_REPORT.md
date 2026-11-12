@@ -48,3 +48,7 @@ The inventory and appointment assertions executed, but the integration test afte
 
 ## Appointment management UI increment
 Added the appointment screen with live API integration and permission-gated creation/status actions. The screen loads patient, doctor and department choices only when appointment creation is permitted. Frontend build and CI for this increment are pending.
+
+
+## Inventory UI and movement-history increment
+Added `/api/inventory/movements` with date-range validation and cost masking, exposed all stock batches including zero-quantity batches for reconciliation, and added batch count/reason UI. The screen shows movement type, quantity, batch and performer ID. CI validation is pending.
