@@ -103,7 +103,7 @@ async function startApi(databaseUrl) {
   });
 
   const { app: api } = await import(pathToFileURL(path.join(serverRoot, 'src', 'app.js')).href);
-  const express = (await import(path.join(serverRoot, 'node_modules', 'express', 'index.js'))).default;
+  const express = (await import(pathToFileURL(path.join(serverRoot, 'node_modules', 'express', 'index.js')).href)).default;
   const frontend = path.join(app.getAppPath(), 'dist');
   api.use(express.static(frontend));
   api.get(/.*/, (_req, res) => res.sendFile(path.join(frontend, 'index.html')));
