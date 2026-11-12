@@ -77,19 +77,23 @@ operationsRouter.get('/analytics',requirePermission('operations.read'),async(req
   if(doctorScopes.length)where.doctorId={in:doctorScopes};
   if(patientScopes.length)where.patientId={in:patientScopes};
  }
- const rows=await prisma.operation.findMany({where,select:{id:true,scheduledAt:true,totalCost:true,consumablesCost:true,medicationsCost:true,doctor:{select:{id:true,fullName:true}},operationType:{select:{id:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}}},take:10000});
- const byMonth=new Map(),byType=new Map(),byDoctor=new Map();
+ const rows=await prisma.operation.findMany({where,select:{id:true,scheduledAt:true,totalCost:true,consumablesCost:true,medicationsCost:true,doctor:{select:{id:true,fullName:true}},operationType:{select:{id:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}},items:{select:{itemNameSnapshot:true,quantity:true,lineCost:true}}},take:10000});
+ const byMonth=new Map(),byType=new Map(),byDoctor=new Map(),byItem=new Map();
  let totalCost=0,consumablesCost=0,medicationsCost=0,cesareanCount=0,naturalDeliveryCount=0;
  for(const row of rows){
   const month=row.scheduledAt.toISOString().slice(0,7);const cost=Number(row.totalCost);totalCost+=cost;consumablesCost+=Number(row.consumablesCost);medicationsCost+=Number(row.medicationsCost);
   byMonth.set(month,(byMonth.get(month)||0)+1);
   byType.set(row.operationType.nameAr,(byType.get(row.operationType.nameAr)||0)+1);
   byDoctor.set(row.doctor.fullName,(byDoctor.get(row.doctor.fullName)||0)+1);
+  for(const used of row.items){
+   const current=byItem.get(used.itemNameSnapshot)||{item:used.itemNameSnapshot,quantity:0,operations:0,cost:0};
+   current.quantity+=Number(used.quantity);current.operations+=1;current.cost+=Number(used.lineCost);byItem.set(used.itemNameSnapshot,current);
+  }
   if(row.operationType.isCesarean)cesareanCount++;
   if(row.operationType.isDelivery&&!row.operationType.isCesarean)naturalDeliveryCount++;
  }
  const financial=canReadCosts(req.user)?{totalCost:Number(totalCost.toFixed(2)),averageCost:rows.length?Number((totalCost/rows.length).toFixed(2)):0,consumablesCost:Number(consumablesCost.toFixed(2)),medicationsCost:Number(medicationsCost.toFixed(2))}:{};
- res.json({summary:{operations:rows.length,...financial,deliveries:cesareanCount+naturalDeliveryCount,cesareanCount,naturalDeliveryCount},byMonth:[...byMonth].map(([month,count])=>({month,count})),byType:[...byType].map(([operationType,count])=>({operationType,count})),byDoctor:[...byDoctor].map(([doctor,count])=>({doctor,count}))});
+ res.json({summary:{operations:rows.length,...financial,deliveries:cesareanCount+naturalDeliveryCount,cesareanCount,naturalDeliveryCount},byMonth:[...byMonth].map(([month,count])=>({month,count})),byType:[...byType].map(([operationType,count])=>({operationType,count})),byDoctor:[...byDoctor].map(([doctor,count])=>({doctor,count})),byItem:[...byItem.values()].map(x=>canReadCosts(req.user)?{...x,cost:Number(x.cost.toFixed(2))}:{item:x.item,quantity:x.quantity,operations:x.operations}).sort((a,b)=>b.quantity-a.quantity).slice(0,30)});
 }catch(error){next(error);}});
 operationsRouter.post('/',requirePermission('operations.create'),async(req,res,next)=>{try{
  const p=operationSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid operation data',details:p.error.flatten()});
