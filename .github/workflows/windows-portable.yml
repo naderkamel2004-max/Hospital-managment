@@ -55,6 +55,16 @@ jobs:
           Invoke-WebRequest -Uri $url -OutFile "build-resources\\node\\node.exe"
       - name: Package portable Windows executable
         run: npm run package:windows
+      - name: Verify packaged Prisma migration runtime
+        shell: pwsh
+        run: |
+          $prismaCli = "dist-electron\\win-unpacked\\resources\\server\\node_modules\\prisma\\build\\index.js"
+          if (-not (Test-Path $prismaCli)) {
+            Write-Host "Packaged server Prisma CLI is missing. Available server modules:"
+            Get-ChildItem "dist-electron\\win-unpacked\\resources\\server\\node_modules" -Directory -ErrorAction SilentlyContinue | Select-Object -First 30 -ExpandProperty Name
+            throw "Portable app is missing the Prisma CLI required for first-run database migrations: $prismaCli"
+          }
+          Write-Host "Packaged Prisma migration runtime verified."
       - name: Smoke test packaged Windows application as a standard Windows user
         shell: pwsh
         run: |
