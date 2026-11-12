@@ -174,9 +174,14 @@ model Product {
   sku String @unique
   nameAr String
   nameEn String
+  category ItemCategory @default(CONSUMABLE)
   unit String
-  reorderLevel Int @default(0)
+  purchasePrice Decimal @default(0) @db.Decimal(14,2)
+  sellingPrice Decimal? @db.Decimal(14,2)
+  reorderLevel Decimal @default(0) @db.Decimal(12,3)
+  isActive Boolean @default(true)
   stockItems StockItem[]
+  stockMovements StockMovement[]
   prescriptionItems PrescriptionItem[]
   operationItems OperationItem[]
 }
@@ -186,8 +191,9 @@ model StockItem {
   product Product @relation(fields: [productId], references: [id])
   batchNo String
   expiryDate DateTime?
-  quantity Int
+  quantity Decimal @db.Decimal(12,3)
   @@unique([productId, batchNo])
+  @@index([expiryDate])
 }
 model Prescription {
   id String @id @default(cuid())
@@ -352,4 +358,20 @@ model SystemSetting {
   key String @id
   value Json
   updatedAt DateTime @updatedAt
+}
+
+model StockMovement {
+  id String @id @default(cuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id])
+  stockItemId String?
+  movementType String
+  quantity Decimal @db.Decimal(12,3)
+  unitCost Decimal @db.Decimal(14,2)
+  referenceType String?
+  referenceId String?
+  performedById String
+  createdAt DateTime @default(now())
+  @@index([productId, createdAt])
+  @@index([referenceType, referenceId])
 }
