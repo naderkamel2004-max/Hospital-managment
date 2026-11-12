@@ -15,6 +15,7 @@ let operationsPermission;
 let operationsCreatePermission;
 let operationsUpdatePermission;
 let doctorsUpdatePermission;
+let inventoryAdjustPermission;
 let department;
 let patient;
 let doctor;
@@ -38,6 +39,7 @@ before(async () => {
   operationsCreatePermission = await prisma.permission.create({ data: { code: 'operations.create', description: 'Create operations for validation integration test' }});
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsCreatePermission.id }});
   doctorsUpdatePermission = await prisma.permission.create({ data: { code: 'doctors.update', description: 'Update doctors for integration test' }});
+  inventoryAdjustPermission = await prisma.permission.create({ data: { code: 'inventory.adjust', description: 'Adjust stock quantities in integration test' }});
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: doctorsUpdatePermission.id }});
   operationsUpdatePermission = await prisma.permission.create({ data: { code: 'operations.update', description: 'Update operations for stock reversal integration test' }});
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsUpdatePermission.id }});
@@ -63,6 +65,7 @@ after(async () => {
   if (operationsCreatePermission) await prisma.permission.deleteMany({ where: { id: operationsCreatePermission.id }});
   if (operationsUpdatePermission) await prisma.permission.deleteMany({ where: { id: operationsUpdatePermission.id }});
   if (doctorsUpdatePermission) await prisma.permission.deleteMany({ where: { id: doctorsUpdatePermission.id }});
+  if (inventoryAdjustPermission) await prisma.permission.deleteMany({ where: { id: inventoryAdjustPermission.id }});
   await prisma.$disconnect();
 });
 
@@ -101,6 +104,14 @@ test('login, live permission revocation, and account lockout are enforced', asyn
   operationType = await prisma.operationType.create({ data: { code: 'CI_OP_' + suffix, nameAr: 'عملية اختبار', nameEn: 'CI Test Operation' }});
   product = await prisma.product.create({ data: { sku: 'CI-SKU-' + suffix, nameAr: 'شاش اختبار', nameEn: 'CI Gauze', category: 'CONSUMABLE', unit: 'piece', purchasePrice: 2 }});
   stockItem = await prisma.stockItem.create({ data: { productId: product.id, batchNo: 'CI-BATCH-' + suffix, unitCost: 2, quantity: 5 }});
+  await request(app).post('/api/inventory/adjustments').set('Authorization', 'Bearer ' + accessToken).send({ stockItemId: stockItem.id, countedQuantity: 6, reason: 'Physical stock count' }).expect(403);
+  await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: inventoryAdjustPermission.id }});
+  const adjusted = await request(app).post('/api/inventory/adjustments').set('Authorization', 'Bearer ' + accessToken).send({ stockItemId: stockItem.id, countedQuantity: 6, reason: 'Physical stock count' }).expect(200);
+  assert.equal(adjusted.body.adjustment.delta, 1);
+  assert.equal(Number(adjusted.body.item.quantity), 6);
+  const adjustmentMovement = await prisma.stockMovement.findFirst({ where: { productId: product.id, movementType: 'STOCK_ADJUSTMENT' }});
+  assert.equal(Number(adjustmentMovement.quantity), 1);
+
   const created = await request(app).post('/api/operations').set('Authorization', 'Bearer ' + accessToken).send({ operationNo: 'CI-OP-' + suffix, patientId: patient.id, doctorId: doctor.id, operationTypeId: operationType.id, scheduledAt: new Date().toISOString(), items: [{ productId: product.id, quantity: 2 }] }).expect(201);
   createdOperationId = created.body.item.id;
   let currentStock = await prisma.stockItem.findUnique({ where: { id: stockItem.id }});

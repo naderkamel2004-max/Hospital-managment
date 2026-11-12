@@ -9,7 +9,7 @@ const permissions=[
   ['doctors.read','Read doctors'],['doctors.create','Create doctors'],['doctors.update','Update doctors'],
   ['operations.read','Read operations'],['operations.create','Create operations'],['operations.update','Update operations'],['operations.costs.write','Enter manual operation costs'],['operations.manage_types','Manage operation types'],['operations.costs.read','Read operation financial costs'],
   ['dashboard.read','Read dashboard analytics'],
-  ['inventory.read','Read inventory'],['inventory.manage','Manage inventory products'],['inventory.receive','Receive stock batches'],['inventory.costs.read','Read inventory purchase and selling costs'],['inventory.costs.write','Enter inventory purchase and selling costs'],
+  ['inventory.read','Read inventory'],['inventory.manage','Manage inventory products'],['inventory.receive','Receive stock batches'],['inventory.adjust','Adjust stock quantities and perform stock counts'],['inventory.costs.read','Read inventory purchase and selling costs'],['inventory.costs.write','Enter inventory purchase and selling costs'],
   ['users.manage','Manage users']
 ];
 

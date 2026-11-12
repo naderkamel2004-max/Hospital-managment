@@ -19,6 +19,24 @@ inventoryRouter.post('/products',requirePermission('inventory.manage'),async(req
  await prisma.auditLog.create({data:{userId:req.user.id,action:'PRODUCT_CREATED',entity:'Product',entityId:item.id,ipAddress:req.ip,afterData:p.data}});
  res.status(201).json({item:protectProduct(item,canReadInventoryCosts(req.user))});
 }catch(error){if(error.code==='P2002')return res.status(409).json({error:'SKU already exists'});next(error);}});
+inventoryRouter.post('/adjustments',requirePermission('inventory.adjust'),async(req,res,next)=>{try{
+ const p=z.object({stockItemId:z.string().min(1),countedQuantity:z.coerce.number().nonnegative().max(1000000),reason:z.string().trim().min(5).max(500)}).strict().safeParse(req.body);
+ if(!p.success)return res.status(400).json({error:'Invalid stock adjustment',details:p.error.flatten()});
+ const result=await prisma.$transaction(async tx=>{
+  const batch=await tx.stockItem.findFirst({where:{id:p.data.stockItemId,product:{isActive:true}},include:{product:{select:{id:true,sku:true,nameAr:true,nameEn:true,unit:true}}}});
+  if(!batch)throw Object.assign(new Error('Active stock batch not found'),{status:404});
+  const before=Number(batch.quantity),delta=Number((p.data.countedQuantity-before).toFixed(3));
+  if(delta===0)return {item:batch,changed:false,before,delta};
+  const changed=await tx.stockItem.updateMany({where:{id:batch.id,quantity:batch.quantity},data:{quantity:p.data.countedQuantity}});
+  if(changed.count!==1)throw Object.assign(new Error('Stock changed concurrently; refresh the count and retry'),{status:409});
+  const updated=await tx.stockItem.findUnique({where:{id:batch.id},include:{product:{select:{id:true,sku:true,nameAr:true,nameEn:true,unit:true}}}});
+  await tx.stockMovement.create({data:{productId:batch.productId,stockItemId:batch.id,movementType:'STOCK_ADJUSTMENT',quantity:delta,unitCost:batch.unitCost,referenceType:'StockAdjustment',referenceId:batch.id,performedById:req.user.id}});
+  await tx.auditLog.create({data:{userId:req.user.id,action:'STOCK_ADJUSTED',entity:'StockItem',entityId:batch.id,ipAddress:req.ip,beforeData:{quantity:before},afterData:{quantity:p.data.countedQuantity,delta,reason:p.data.reason}}});
+  return {item:updated,changed:true,before,delta};
+ });
+ const item=canReadInventoryCosts(req.user)?result.item:(({unitCost,...safe})=>safe)(result.item);
+ res.status(200).json({item,adjustment:{changed:result.changed,previousQuantity:result.before,delta:result.delta}});
+}catch(error){next(error);}});
 inventoryRouter.post('/receipts',requirePermission('inventory.receive'),requirePermission('inventory.costs.write'),async(req,res,next)=>{try{
  const p=z.object({productId:z.string().min(1),batchNo:z.string().trim().min(1).max(80),expiryDate:z.coerce.date().optional().nullable(),quantity:z.coerce.number().positive().max(1000000),unitCost:z.coerce.number().nonnegative().max(100000000)}).safeParse(req.body);
  if(!p.success)return res.status(400).json({error:'Invalid stock receipt',details:p.error.flatten()});

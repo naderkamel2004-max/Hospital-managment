@@ -32,3 +32,7 @@ The patient-profile editing UI increment added after the run above still require
 - No production-like multi-user concurrency or load acceptance.
 - No backup/restore drill or disaster-recovery evidence.
 - No clinical user acceptance or regulatory sign-off.
+
+
+## New increment awaiting CI
+Inventory adjustment API and integration coverage were added after the last successful run. The integration test checks denial without `inventory.adjust`, successful count correction from 5 to 6, and creation of a `STOCK_ADJUSTMENT` movement. This code has not been locally executed; await GitHub Actions for validation.

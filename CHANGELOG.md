@@ -9,3 +9,5 @@ All notable project increments are recorded here.
 - Added responsive styling for patient profile editing and doctor edit actions.
 - Added durable project completion, roadmap, testing, changelog and autonomous-work-state documents.
 - Patient profile editing awaits its own GitHub Actions result.
+
+- Added inventory adjustment endpoint using an optimistic quantity check, immutable stock movement and audit event; introduced `inventory.adjust` permission and integration coverage.
