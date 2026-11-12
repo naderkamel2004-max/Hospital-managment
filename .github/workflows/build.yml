@@ -53,4 +53,6 @@ jobs:
           node --check server/src/routes/operations.js
           node --check server/src/routes/doctors.js
           node --check server/src/routes/dashboard.js
+          node --check server/src/routes/users.js
+          node --check server/src/routes/studio.js
           node --check server/src/middleware/auth.js
