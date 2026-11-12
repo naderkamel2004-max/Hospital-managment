@@ -12,6 +12,7 @@ const password = 'CI-Only-Strong-Password-2026!';
 let role;
 let permission;
 let operationsPermission;
+let operationsCreatePermission;
 let user;
 let accessToken;
 
@@ -25,6 +26,8 @@ before(async () => {
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id }});
   operationsPermission = await prisma.permission.create({ data: { code: 'operations.read', description: 'Read operations for analytics integration test' }});
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsPermission.id }});
+  operationsCreatePermission = await prisma.permission.create({ data: { code: 'operations.create', description: 'Create operations for validation integration test' }});
+  await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsCreatePermission.id }});
   user = await prisma.user.create({ data: {
     email, fullName: 'CI Integration User', passwordHash: await bcrypt.hash(password, 4), roleId: role.id
   }});
@@ -36,6 +39,7 @@ after(async () => {
   if (role) await prisma.role.deleteMany({ where: { id: role.id }});
   if (permission) await prisma.permission.deleteMany({ where: { id: permission.id }});
   if (operationsPermission) await prisma.permission.deleteMany({ where: { id: operationsPermission.id }});
+  if (operationsCreatePermission) await prisma.permission.deleteMany({ where: { id: operationsCreatePermission.id }});
   await prisma.$disconnect();
 });
 
@@ -59,6 +63,12 @@ test('login, live permission revocation, and account lockout are enforced', asyn
   const analytics = await request(app).get('/api/operations/analytics')
     .set('Authorization', `Bearer ${accessToken}`).expect(200);
   assert.equal(analytics.body.summary.operations, 0);
+
+  const cancelledCreate = await request(app).post('/api/operations')
+    .set('Authorization', `Bearer ${accessToken}`)
+    .send({ operationNo: 'CI-CANCELLED', patientId: 'not-used', doctorId: 'not-used', operationTypeId: 'not-used', scheduledAt: new Date().toISOString(), status: 'CANCELLED' })
+    .expect(400);
+  assert.equal(cancelledCreate.body.error, 'Invalid operation data');
 
   await prisma.rolePermission.delete({ where: {
     roleId_permissionId: { roleId: role.id, permissionId: permission.id }

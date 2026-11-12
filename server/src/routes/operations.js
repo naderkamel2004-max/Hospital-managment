@@ -26,6 +26,9 @@ const operationSchema=z.object({
   status:z.enum(['SCHEDULED','IN_PROGRESS','COMPLETED','CANCELLED']).default('SCHEDULED'),
   notes:z.string().trim().max(5000).optional().nullable(),
   items:z.array(itemSchema).max(300).default([])
+}).superRefine((operation,ctx)=>{
+  if(operation.status==='CANCELLED')ctx.addIssue({code:'custom',path:['status'],message:'Create the operation first; use the cancellation workflow to cancel it safely'});
+  if(operation.startedAt&&operation.endedAt&&operation.endedAt<operation.startedAt)ctx.addIssue({code:'custom',path:['endedAt'],message:'Operation end time cannot be earlier than start time'});
 });
 const include={patient:{select:{id:true,medicalRecordNo:true,firstName:true,lastName:true}},doctor:{select:{id:true,fullName:true,specialty:true}},operationType:{select:{id:true,code:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}},items:true};
 function canReadCosts(user){return user.role==='SUPER_ADMIN'||user.permissions?.includes('operations.costs.read');}
