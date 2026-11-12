@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  frontend-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,7 +17,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm install
       - name: Build frontend
         run: npm run build
+
+  backend-check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://hms:password@localhost:5432/hms?schema=public
+      JWT_ACCESS_SECRET: ci-only-secret-change-me-before-production-123456
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies
+        working-directory: server
+        run: npm install
+      - name: Validate Prisma schema
+        working-directory: server
+        run: npx prisma validate
+      - name: Check API JavaScript syntax
+        run: |
+          node --check server/src/index.js
+          node --check server/src/routes/auth.js
+          node --check server/src/middleware/auth.js
