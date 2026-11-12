@@ -40,3 +40,7 @@ Inventory adjustment API and integration coverage were added after the last succ
 
 ## Failure analysis and correction
 The inventory-adjustment CI run exposed a stale expectation in the pre-existing operation stock test: the new physical count raised the initial batch from 5 to 6, so consuming 2 leaves 4 (not 3), and cancellation restores 6 (not 5). The assertions were corrected to reflect the actual ledger sequence. This is a test-fixture expectation correction, not a production-code workaround; rerun CI is required.
+
+
+## Teardown failure found in CI
+The inventory and appointment assertions executed, but the integration test after-hook failed because it attempted to delete the patient before deleting the appointment referencing that patient. The fixture cleanup order is corrected to delete the appointment first. CI must be rerun to verify teardown succeeds.

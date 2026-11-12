@@ -56,6 +56,7 @@ after(async () => {
   if (product) await prisma.stockMovement.deleteMany({ where: { productId: product.id }});
   if (stockItem) await prisma.stockItem.deleteMany({ where: { id: stockItem.id }});
   if (product) await prisma.product.deleteMany({ where: { id: product.id }});
+  if (appointment) await prisma.appointment.deleteMany({ where: { id: appointment.id }});
   if (patient) await prisma.patient.deleteMany({ where: { id: patient.id }});
   if (doctor) await prisma.doctor.deleteMany({ where: { id: doctor.id }});
   if (department) await prisma.department.deleteMany({ where: { id: department.id }});
@@ -69,7 +70,6 @@ after(async () => {
   if (operationsUpdatePermission) await prisma.permission.deleteMany({ where: { id: operationsUpdatePermission.id }});
   if (doctorsUpdatePermission) await prisma.permission.deleteMany({ where: { id: doctorsUpdatePermission.id }});
   if (inventoryAdjustPermission) await prisma.permission.deleteMany({ where: { id: inventoryAdjustPermission.id }});
-  if (appointment) await prisma.appointment.deleteMany({ where: { id: appointment.id }});
   if (appointmentUpdatePermission) await prisma.permission.deleteMany({ where: { id: appointmentUpdatePermission.id }});
   await prisma.$disconnect();
 });
