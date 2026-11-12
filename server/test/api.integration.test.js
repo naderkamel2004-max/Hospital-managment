@@ -32,6 +32,7 @@ before(async () => {
 
 after(async () => {
   if (user) await prisma.user.deleteMany({ where: { id: user.id }});
+  if (role) await prisma.rolePermission.deleteMany({ where: { roleId: role.id }});
   if (role) await prisma.role.deleteMany({ where: { id: role.id }});
   if (permission) await prisma.permission.deleteMany({ where: { id: permission.id }});
   if (operationsPermission) await prisma.permission.deleteMany({ where: { id: operationsPermission.id }});
