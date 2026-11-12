@@ -25,7 +25,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Install desktop and frontend dependencies
         run: npm install
       - name: Install API dependencies and generate Windows Prisma client
