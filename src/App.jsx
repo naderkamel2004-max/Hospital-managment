@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Activity, CalendarDays, ClipboardList, Languages, LayoutDashboard, LogOut, Package, Search, ShieldCheck, Stethoscope, Users, HeartPulse, RefreshCw } from 'lucide-react';
 import { apiRequest } from './lib/api.js';
 import './styles.css';
+import OperationCreate from './components/OperationCreate.jsx';
 
 const text = {
  ar: {title:'نظام إدارة المستشفى',subtitle:'منصة التشغيل والإدارة الطبية',login:'تسجيل الدخول',email:'البريد الإلكتروني',password:'كلمة المرور',submit:'دخول آمن',dashboard:'لوحة التحكم',operations:'العمليات الجراحية',patients:'المرضى',doctors:'الأطباء',inventory:'المخزون',users:'المستخدمون',welcome:'مرحباً بك',overview:'ملخص أداء المستشفى',opsCount:'عدد العمليات',patientsCount:'المرضى',doctorsCount:'الأطباء',deliveries:'الولادات',cost:'إجمالي التكلفة',recent:'أحدث العمليات',number:'رقم العملية',patient:'المريض',doctor:'الطبيب',type:'نوع العملية',date:'التاريخ',status:'الحالة',search:'ابحث...',loading:'جارٍ تحميل البيانات...',empty:'لا توجد بيانات',logout:'تسجيل الخروج',language:'English',retry:'إعادة المحاولة',forbidden:'ليس لديك صلاحية لعرض هذا القسم',loginError:'بيانات الدخول غير صحيحة أو تعذر الاتصال بالخادم',scheduled:'مجدولة',inProgress:'جارية',completed:'مكتملة',cancelled:'ملغاة',sku:'الكود',name:'الاسم',onHand:'الرصيد المتاح'},
@@ -17,6 +18,7 @@ export default function App() {
  const [token,setToken]=useState('');
  const [user,setUser]=useState(null);
  const [permissions,setPermissions]=useState([]);
+ const [showOperationForm,setShowOperationForm]=useState(false);
  const [active,setActive]=useState('dashboard');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -40,7 +42,7 @@ export default function App() {
   finally { setLoading(false); }
  }
  useEffect(()=>{if(token)load(active);},[token,active]);
- function logout(){setToken('');setUser(null);setPermissions([]);setData(null);setActive('dashboard');setError('');}
+ function logout(){setToken('');setUser(null);setPermissions([]);setData(null);setShowOperationForm(false);setActive('dashboard');setError('');}
  if(!token) return <div className="login-screen" dir={rtl?'rtl':'ltr'}>
   <form className="login-card" onSubmit={signIn}>
    <div className="brand-symbol"><HeartPulse size={30}/></div><h1>{t.title}</h1><p>{t.subtitle}</p>
@@ -61,8 +63,8 @@ export default function App() {
    <div className="sidebar-foot"><ShieldCheck size={16}/>{rtl?'جلسة آمنة':'Secure session'}</div>
   </aside>
   <main className="main"><header className="topbar"><span>{t.dashboard} / {t[active]}</span><div className="top-actions"><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search}/></label><button className="secondary" onClick={()=>setLang(rtl?'en':'ar')}><Languages size={16}/>{t.language}</button><div className="user"><b>{user?.fullName||'—'}</b><small>{user?.role||'—'}</small></div><button className="secondary" onClick={logout}><LogOut size={16}/>{t.logout}</button></div></header>
-   <section className="content"><div className="heading"><div><small>{t.title}</small><h1>{active==='dashboard'?t.welcome:t[active]}</h1><p>{t.overview}</p></div><button className="secondary" onClick={()=>load(active)}><RefreshCw size={16}/>{t.retry}</button></div>
-   {loading?<div className="state"><Activity/>{t.loading}</div>:error?<div className="state error">{error}</div>:active==='dashboard'?<Dashboard data={data||{}} t={t} lang={lang}/>:<Records section={active} items={items} t={t} lang={lang}/>}
+   <section className="content"><div className="heading"><div><small>{t.title}</small><h1>{active==='dashboard'?t.welcome:t[active]}</h1><p>{t.overview}</p></div><div className="heading-actions">{active==='operations'&&permissions.includes('operations.create')&&<button className="primary" onClick={()=>setShowOperationForm(v=>!v)}>{showOperationForm?(rtl?'إغلاق':'Close'):(rtl?'إضافة عملية':'New operation')}</button>}<button className="secondary" onClick={()=>load(active)}><RefreshCw size={16}/>{t.retry}</button></div></div>
+   {showOperationForm&&active==='operations'?<OperationCreate token={token} lang={lang} onCancel={()=>setShowOperationForm(false)} onCreated={()=>{setShowOperationForm(false);load('operations');}}/>:loading?<div className="state"><Activity/>{t.loading}</div>:error?<div className="state error">{error}</div>:active==='dashboard'?<Dashboard data={data||{}} t={t} lang={lang}/>:<Records section={active} items={items} t={t} lang={lang}/>}
    <footer>© {new Date().getFullYear()} {t.title} · HMS</footer></section>
   </main>
  </div>;
