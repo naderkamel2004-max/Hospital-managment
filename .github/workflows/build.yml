@@ -69,6 +69,8 @@ jobs:
       - name: Check API JavaScript syntax
         run: |
           node --check server/src/index.js
+          node --check server/src/app.js
+          node --check server/src/lib/access-scopes.js
           node --check server/src/routes/auth.js
           node --check server/src/routes/patients.js
           node --check server/src/routes/departments.js
