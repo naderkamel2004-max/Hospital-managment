@@ -13,6 +13,7 @@ const postgresRoot = isPackaged ? path.join(resources, 'postgres') : '';
 const dataRoot = path.join(app.getPath('userData'), 'database');
 const port = 4000;
 let postgres;
+let postgresBin;
 let httpServer;
 let shuttingDown = false;
 
@@ -56,6 +57,7 @@ async function waitForDatabase(pgIsReady) {
 async function startDatabase() {
   fs.mkdirSync(dataRoot, { recursive: true });
   const bin = path.join(postgresRoot, 'bin');
+  postgresBin = bin;
   const initdb = path.join(bin, 'initdb.exe');
   const postgresExe = path.join(bin, 'postgres.exe');
   const pgIsReady = path.join(bin, 'pg_isready.exe');
@@ -132,7 +134,16 @@ async function createWindow() {
 async function shutdown() {
   shuttingDown = true;
   if (httpServer) await new Promise(resolve => httpServer.close(resolve));
-  if (postgres && !postgres.killed) postgres.kill();
+  if (postgres && !postgres.killed && postgresBin) {
+    try {
+      await runBinary(path.join(postgresBin, 'pg_ctl.exe'), ['-D', dataRoot, '-m', 'fast', '-w', 'stop'], {
+        env: { ...process.env, PATH: `${postgresBin};${path.join(postgresRoot, 'lib')};${process.env.PATH || ''}` }
+      });
+    } catch (error) {
+      console.error('Graceful PostgreSQL shutdown failed:', error);
+      postgres.kill();
+    }
+  }
 }
 
 app.whenReady().then(async () => {
