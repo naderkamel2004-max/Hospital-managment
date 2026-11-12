@@ -97,7 +97,7 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
  const item=await prisma.$transaction(async tx=>{
   const [patient,doctor,type]=await Promise.all([tx.patient.findUnique({where:{id:data.patientId},select:{id:true}}),tx.doctor.findUnique({where:{id:data.doctorId},select:{id:true}}),tx.operationType.findUnique({where:{id:data.operationTypeId},select:{id:true,isActive:true}})]);
   if(!patient||!doctor||!type?.isActive)throw Object.assign(new Error('Patient, doctor or active operation type not found'),{status:400});
-  const normalized=[];
+  const normalized=[];const movements=[];
   for(const entry of items){
    if(!entry.productId){normalized.push(entry);continue;}
    const product=await tx.product.findUnique({where:{id:entry.productId},select:{id:true,nameAr:true,unit:true,category:true,isActive:true}});
@@ -110,7 +110,7 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
     const available=Number(batch.quantity),take=Math.min(available,remaining);
     if(take<=0)continue;
     await tx.stockItem.update({where:{id:batch.id},data:{quantity:{decrement:take}}});
-    await tx.stockMovement.create({data:{productId:product.id,stockItemId:batch.id,movementType:'OPERATION_CONSUMPTION',quantity:-take,unitCost:batch.unitCost,referenceType:'OperationPending',performedById:req.user.id}});
+    movements.push({productId:product.id,stockItemId:batch.id,movementType:'OPERATION_CONSUMPTION',quantity:-take,unitCost:batch.unitCost,performedById:req.user.id});
     totalValue+=take*Number(batch.unitCost);remaining-=take;
    }
    if(remaining>0)throw Object.assign(new Error('Insufficient non-expired stock for '+product.nameAr),{status:409});
@@ -118,7 +118,7 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
   }
   const totals=calculate(normalized);
   const created=await tx.operation.create({data:{...data,...totals,createdById:req.user.id,items:{create:totals.lines.map(({itemName,unit,...line})=>({...line,itemNameSnapshot:itemName,unitSnapshot:unit}))}},include});
-  await tx.stockMovement.updateMany({where:{referenceType:'OperationPending',performedById:req.user.id,referenceId:null},data:{referenceType:'Operation',referenceId:created.id}});
+  if(movements.length)await tx.stockMovement.createMany({data:movements.map(m=>({...m,referenceType:'Operation',referenceId:created.id}))});
   await tx.auditLog.create({data:{userId:req.user.id,action:'OPERATION_CREATED',entity:'Operation',entityId:created.id,ipAddress:req.ip,afterData:{operationNo:created.operationNo,totalCost:totals.totalCost,itemCount:items.length}}});
   return created;
  });
