@@ -8,8 +8,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const resources = process.resourcesPath;
 const isPackaged = app.isPackaged;
-if (process.env.HMS_TEST_USER_DATA) {
-  app.setPath('userData', path.resolve(process.env.HMS_TEST_USER_DATA));
+const testUserDataArg = process.argv.find(argument => argument.startsWith('--hms-user-data='));
+const requestedUserData = process.env.HMS_TEST_USER_DATA || testUserDataArg?.slice('--hms-user-data='.length);
+if (requestedUserData) {
+  const resolvedUserData = path.resolve(requestedUserData);
+  // Create the directory as the current Windows user before Electron starts writing to it.
+  fs.mkdirSync(resolvedUserData, { recursive: true });
+  app.setPath('userData', resolvedUserData);
 }
 const userData = app.getPath('userData');
 const logFile = path.join(userData, 'startup.log');
