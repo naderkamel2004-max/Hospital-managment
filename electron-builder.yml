@@ -14,6 +14,10 @@ extraResources:
       - "**/*"
       - "!**/.env"
       - "!**/test/**"
+  - from: build-resources/node
+    to: node
+    filter:
+      - "node.exe"
   - from: build-resources/postgres
     to: postgres
     filter:
