@@ -10,11 +10,18 @@ dashboardRouter.get('/summary',async(req,res,next)=>{try{
  const where={scheduledAt:{gte:from,lte:to},status:{not:'CANCELLED'}};
  if(typeof req.query.doctorId==='string')where.doctorId=req.query.doctorId;
  if(typeof req.query.operationTypeId==='string')where.operationTypeId=req.query.operationTypeId;
+ if(req.user.role!=='SUPER_ADMIN'){
+  const doctorScopes=req.user.scopes.filter(x=>x.resource==='doctor').map(x=>x.resourceId);
+  const patientScopes=req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId);
+  if(doctorScopes.length)where.doctorId={in:doctorScopes};
+  if(patientScopes.length)where.patientId={in:patientScopes};
+ }
  const [ops,doctors,patients]=await Promise.all([
   prisma.operation.findMany({where,select:{totalCost:true,consumablesCost:true,operationType:{select:{isDelivery:true,isCesarean:true}}},take:10000}),
   prisma.doctor.count(),
   prisma.patient.count()
  ]);
  const totalCost=ops.reduce((n,x)=>n+Number(x.totalCost),0);
- res.json({operations:ops.length,totalCost:Number(totalCost.toFixed(2)),averageCost:ops.length?Number((totalCost/ops.length).toFixed(2)):0,consumablesCost:Number(ops.reduce((n,x)=>n+Number(x.consumablesCost),0).toFixed(2)),doctors,patients,deliveries:ops.filter(x=>x.operationType.isDelivery).length,cesarean:ops.filter(x=>x.operationType.isCesarean).length,naturalDeliveries:ops.filter(x=>x.operationType.isDelivery&&!x.operationType.isCesarean).length});
+ const financial=req.user.role==='SUPER_ADMIN'||req.user.permissions.includes('operations.costs.read')?{totalCost:Number(totalCost.toFixed(2)),averageCost:ops.length?Number((totalCost/ops.length).toFixed(2)):0,consumablesCost:Number(ops.reduce((n,x)=>n+Number(x.consumablesCost),0).toFixed(2))}:{};
+ res.json({operations:ops.length,...financial,doctors,patients,deliveries:ops.filter(x=>x.operationType.isDelivery).length,cesarean:ops.filter(x=>x.operationType.isCesarean).length,naturalDeliveries:ops.filter(x=>x.operationType.isDelivery&&!x.operationType.isCesarean).length});
 }catch(error){next(error);}});

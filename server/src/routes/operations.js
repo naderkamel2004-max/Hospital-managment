@@ -45,7 +45,7 @@ operationsRouter.post('/types',requirePermission('operations.manage_types'),asyn
  const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid operation type',details:p.error.flatten()});
  const item=await prisma.operationType.create({data:p.data});
  await prisma.auditLog.create({data:{userId:req.user.id,action:'OPERATION_TYPE_CREATED',entity:'OperationType',entityId:item.id,ipAddress:req.ip,afterData:p.data}});
- res.status(201).json({item});
+ res.status(201).json({item:protectCosts(item,canReadCosts(req.user))});
 }catch(error){if(error.code==='P2002')return res.status(409).json({error:'Operation type code already exists'});next(error);}});
 operationsRouter.get('/',requirePermission('operations.read'),async(req,res,next)=>{try{
  const from=req.query.from?new Date(String(req.query.from)):new Date(new Date().getFullYear(),0,1);
@@ -55,6 +55,12 @@ operationsRouter.get('/',requirePermission('operations.read'),async(req,res,next
  if(typeof req.query.doctorId==='string')where.doctorId=req.query.doctorId;
  if(typeof req.query.patientId==='string')where.patientId=req.query.patientId;
  if(typeof req.query.operationTypeId==='string')where.operationTypeId=req.query.operationTypeId;
+ if(req.user.role!=='SUPER_ADMIN'){
+  const doctorScopes=req.user.scopes.filter(x=>x.resource==='doctor').map(x=>x.resourceId);
+  const patientScopes=req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId);
+  if(doctorScopes.length)where.doctorId={in:doctorScopes};
+  if(patientScopes.length)where.patientId={in:patientScopes};
+ }
  const items=await prisma.operation.findMany({where,include,orderBy:{scheduledAt:'desc'},take:500});
  res.json({items:items.map(item=>protectCosts(item,canReadCosts(req.user)))});
 }catch(error){next(error);}});
@@ -65,6 +71,12 @@ operationsRouter.get('/analytics',requirePermission('operations.read'),async(req
  const where={scheduledAt:{gte:from,lte:to},status:{not:'CANCELLED'}};
  if(typeof req.query.doctorId==='string')where.doctorId=req.query.doctorId;
  if(typeof req.query.operationTypeId==='string')where.operationTypeId=req.query.operationTypeId;
+ if(req.user.role!=='SUPER_ADMIN'){
+  const doctorScopes=req.user.scopes.filter(x=>x.resource==='doctor').map(x=>x.resourceId);
+  const patientScopes=req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId);
+  if(doctorScopes.length)where.doctorId={in:doctorScopes};
+  if(patientScopes.length)where.patientId={in:patientScopes};
+ }
  const rows=await prisma.operation.findMany({where,select:{id:true,scheduledAt:true,totalCost:true,consumablesCost:true,medicationsCost:true,doctor:{select:{id:true,fullName:true}},operationType:{select:{id:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}}},take:10000});
  const byMonth=new Map(),byType=new Map(),byDoctor=new Map();
  let totalCost=0,consumablesCost=0,medicationsCost=0,cesareanCount=0,naturalDeliveryCount=0;

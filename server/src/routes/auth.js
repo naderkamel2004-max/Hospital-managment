@@ -14,7 +14,7 @@ authRouter.post('/login', async (req, res, next) => {
     const email = parsed.data.email.trim().toLowerCase();
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { role: { include: { permissions: { include: { permission: true } } } }, userPermissions: { include: { permission: true } } }
+      include: { role: { include: { permissions: { include: { permission: true } } } }, userPermissions: { include: { permission: true } }, scopes: true }
     });
     if (!user || !user.isActive || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -23,7 +23,7 @@ authRouter.post('/login', async (req, res, next) => {
     for (const override of user.userPermissions) permissionMap.set(override.permission.code, override.allowed);
     const permissions = [...permissionMap].filter(([, allowed]) => allowed).map(([code]) => code);
     const accessToken = jwt.sign(
-      { role: user.role.code, permissions },
+      { role: user.role.code, permissions, scopes: user.scopes.map(({resource,resourceId})=>({resource,resourceId})) },
       process.env.JWT_ACCESS_SECRET,
       { subject: user.id, expiresIn: process.env.JWT_ACCESS_TTL || '15m', issuer: 'hms-api', audience: 'hms-client' }
     );
