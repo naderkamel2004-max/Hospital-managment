@@ -23,7 +23,7 @@ encountersRouter.patch('/:id',requirePermission('encounters.update'),async(req,r
  if(!p.success)return res.status(400).json({error:'Invalid encounter update',details:p.error.flatten()});
  const result=await prisma.$transaction(async tx=>{
   const where=combineWhere({id:req.params.id},patientScopeWhere(req.user));
-  const before=await tx.encounter.findFirst({where:{id:req.params.id,...(req.user.role==='SUPER_ADMIN'?{}:{patient:{is:{id:{in:req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId)}}}})},select:{id:true,status:true,patientId:true}});
+  const before=await tx.encounter.findFirst({where,select:{id:true,status:true,patientId:true}});
   if(!before)throw Object.assign(new Error('Encounter not found'),{status:404});
   if(p.data.status&&before.status==='CLOSED')throw Object.assign(new Error('Closed encounters cannot be reopened or edited'),{status:409});
   const data={...p.data,...(p.data.status==='CLOSED'?{closedAt:new Date()}:{}),...(p.data.status==='IN_PROGRESS'&&before.status==='OPEN'?{}:{})};
