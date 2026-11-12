@@ -7,13 +7,13 @@ export const operationsRouter=Router();
 operationsRouter.use(requireAuth);
 const itemSchema=z.object({
   productId:z.string().optional().nullable(),
-  itemName:z.string().trim().min(1).max(160),
-  category:z.enum(['MEDICATION','CONSUMABLE','OTHER']),
-  unit:z.string().trim().min(1).max(30),
+  itemName:z.string().trim().min(1).max(160).optional(),
+  category:z.enum(['MEDICATION','CONSUMABLE','OTHER']).optional(),
+  unit:z.string().trim().min(1).max(30).optional(),
   quantity:z.coerce.number().positive().max(1000000),
-  purchaseUnitPrice:z.coerce.number().nonnegative().max(100000000),
+  purchaseUnitPrice:z.coerce.number().nonnegative().max(100000000).default(0),
   sellingUnitPrice:z.coerce.number().nonnegative().max(100000000).optional().nullable()
-});
+}).superRefine((item,ctx)=>{if(!item.productId&&(!item.itemName||!item.category||!item.unit)){ctx.addIssue({code:'custom',message:'Manual items require name, category and unit'});}});
 const operationSchema=z.object({
   operationNo:z.string().trim().min(1).max(40),
   patientId:z.string().min(1),
@@ -102,7 +102,7 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
    if(!entry.productId){normalized.push(entry);continue;}
    const product=await tx.product.findUnique({where:{id:entry.productId},select:{id:true,nameAr:true,unit:true,category:true,isActive:true}});
    if(!product?.isActive)throw Object.assign(new Error('Active inventory product not found'),{status:400});
-   if(product.category!==entry.category)throw Object.assign(new Error('Item category does not match inventory product'),{status:400});
+   if(entry.category&&product.category!==entry.category)throw Object.assign(new Error('Item category does not match inventory product'),{status:400});
    const batches=await tx.stockItem.findMany({where:{productId:product.id,quantity:{gt:0},OR:[{expiryDate:null},{expiryDate:{gte:new Date()}}]},orderBy:[{expiryDate:'asc'},{createdAt:'asc'}]});
    let remaining=entry.quantity,totalValue=0;
    for(const batch of batches){
@@ -114,7 +114,7 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
     totalValue+=take*Number(batch.unitCost);remaining-=take;
    }
    if(remaining>0)throw Object.assign(new Error('Insufficient non-expired stock for '+product.nameAr),{status:409});
-   normalized.push({...entry,itemName:product.nameAr,unit:product.unit,purchaseUnitPrice:Number((totalValue/entry.quantity).toFixed(4))});
+   normalized.push({...entry,itemName:product.nameAr,unit:product.unit,category:product.category,purchaseUnitPrice:Number((totalValue/entry.quantity).toFixed(4))});
   }
   const totals=calculate(normalized);
   const created=await tx.operation.create({data:{...data,...totals,createdById:req.user.id,items:{create:totals.lines.map(({itemName,unit,...line})=>({...line,itemNameSnapshot:itemName,unitSnapshot:unit}))}},include});
