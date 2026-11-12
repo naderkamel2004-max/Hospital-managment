@@ -102,6 +102,8 @@ async function startApi(databaseUrl) {
     SEED_ADMIN_NAME: 'Hospital Administrator'
   });
 
+  // The API module reads these values from process.env when it initializes Prisma and middleware.
+  Object.assign(process.env, env);
   const { app: api } = await import(pathToFileURL(path.join(serverRoot, 'src', 'app.js')).href);
   const express = (await import(pathToFileURL(path.join(serverRoot, 'node_modules', 'express', 'index.js')).href)).default;
   const frontend = path.join(app.getAppPath(), 'dist');
@@ -154,5 +156,11 @@ app.whenReady().then(async () => {
   }
 });
 
-app.on('before-quit', () => { void shutdown(); });
+let quitInProgress = false;
+app.on('before-quit', event => {
+  if (quitInProgress) return;
+  event.preventDefault();
+  quitInProgress = true;
+  void shutdown().finally(() => app.exit(0));
+});
 app.on('window-all-closed', () => { app.quit(); });
