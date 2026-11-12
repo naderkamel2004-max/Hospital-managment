@@ -104,7 +104,13 @@ async function waitForDatabase(pgIsReady) {
 }
 
 async function startDatabase() {
-  fs.mkdirSync(dataRoot, { recursive: true });
+  fs.mkdirSync(userData, { recursive: true });
+  const hasInitializedDatabase = fs.existsSync(path.join(dataRoot, 'PG_VERSION'));
+  if (!hasInitializedDatabase && fs.existsSync(dataRoot)) {
+    // A previous startup may have left an incomplete directory. It is not a valid database cluster.
+    log('WARN', 'Removing incomplete PostgreSQL data directory before retrying initialization: ' + dataRoot);
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
   const bin = path.join(postgresRoot, 'bin');
   postgresBin = bin;
   const initdb = path.join(bin, 'initdb.exe');
