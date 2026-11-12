@@ -25,6 +25,7 @@ export default function App() {
  const [showPatientForm,setShowPatientForm]=useState(false);
  const [showReceiptForm,setShowReceiptForm]=useState(false);
  const [showProductForm,setShowProductForm]=useState(false);
+ const [selectedPatient,setSelectedPatient]=useState(null);
  const [active,setActive]=useState('dashboard');
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
@@ -48,7 +49,7 @@ export default function App() {
   finally { setLoading(false); }
  }
  useEffect(()=>{if(token)load(active);},[token,active]);
- function logout(){setToken('');setUser(null);setPermissions([]);setData(null);setShowOperationForm(false);setShowPatientForm(false);setShowReceiptForm(false);setShowProductForm(false);setActive('dashboard');setError('');}
+ function logout(){setToken('');setUser(null);setPermissions([]);setData(null);setShowOperationForm(false);setShowPatientForm(false);setShowReceiptForm(false);setShowProductForm(false);setSelectedPatient(null);setActive('dashboard');setError('');}
  if(!token) return <div className="login-screen" dir={rtl?'rtl':'ltr'}>
   <form className="login-card" onSubmit={signIn}>
    <div className="brand-symbol"><HeartPulse size={30}/></div><h1>{t.title}</h1><p>{t.subtitle}</p>
@@ -70,7 +71,7 @@ export default function App() {
   </aside>
   <main className="main"><header className="topbar"><span>{t.dashboard} / {t[active]}</span><div className="top-actions"><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search}/></label><button className="secondary" onClick={()=>setLang(rtl?'en':'ar')}><Languages size={16}/>{t.language}</button><div className="user"><b>{user?.fullName||'—'}</b><small>{user?.role||'—'}</small></div><button className="secondary" onClick={logout}><LogOut size={16}/>{t.logout}</button></div></header>
    <section className="content"><div className="heading"><div><small>{t.title}</small><h1>{active==='dashboard'?t.welcome:t[active]}</h1><p>{t.overview}</p></div><div className="heading-actions">{active==='operations'&&permissions.includes('operations.create')&&<button className="primary" onClick={()=>setShowOperationForm(v=>!v)}>{showOperationForm?(rtl?'إغلاق':'Close'):(rtl?'إضافة عملية':'New operation')}</button>}{active==='patients'&&permissions.includes('patients.create')&&<button className="primary" onClick={()=>setShowPatientForm(v=>!v)}>{showPatientForm?(rtl?'إغلاق':'Close'):(rtl?'إضافة مريض':'New patient')}</button>}{active==='inventory'&&permissions.includes('inventory.manage')&&<button className="primary" onClick={()=>setShowProductForm(v=>!v)}>{showProductForm?(rtl?'إغلاق':'Close'):(rtl?'إضافة صنف':'New product')}</button>}{active==='inventory'&&permissions.includes('inventory.receive')&&permissions.includes('inventory.costs.write')&&<button className="primary" onClick={()=>setShowReceiptForm(v=>!v)}>{showReceiptForm?(rtl?'إغلاق':'Close'):(rtl?'استلام مخزون':'Receive stock')}</button>}<button className="secondary" onClick={()=>load(active)}><RefreshCw size={16}/>{t.retry}</button></div></div>
-   {showOperationForm&&active==='operations'?<OperationCreate token={token} lang={lang} onCancel={()=>setShowOperationForm(false)} onCreated={()=>{setShowOperationForm(false);load('operations');}}/>:showPatientForm&&active==='patients'?<PatientCreate token={token} lang={lang} onCancel={()=>setShowPatientForm(false)} onCreated={()=>{setShowPatientForm(false);load('patients');}}/>:showReceiptForm&&active==='inventory'?<StockReceipt token={token} lang={lang} onCancel={()=>setShowReceiptForm(false)} onCreated={()=>{setShowReceiptForm(false);load('inventory');}}/>:showProductForm&&active==='inventory'?<ProductCreate token={token} lang={lang} onCancel={()=>setShowProductForm(false)} onCreated={()=>{setShowProductForm(false);load('inventory');}}/>:loading?<div className="state"><Activity/>{t.loading}</div>:error?<div className="state error">{error}</div>:active==='dashboard'?<Dashboard data={data||{}} t={t} lang={lang}/>:<Records section={active} items={items} t={t} lang={lang} token={token} canUpdate={permissions.includes('operations.update')} onChanged={()=>load(active)}/>}
+   {selectedPatient&&active==='patients'?<PatientProfile patientId={selectedPatient} token={token} lang={lang} onBack={()=>setSelectedPatient(null)}/>:showOperationForm&&active==='operations'?<OperationCreate token={token} lang={lang} onCancel={()=>setShowOperationForm(false)} onCreated={()=>{setShowOperationForm(false);load('operations');}}/>:showPatientForm&&active==='patients'?<PatientCreate token={token} lang={lang} onCancel={()=>setShowPatientForm(false)} onCreated={()=>{setShowPatientForm(false);load('patients');}}/>:showReceiptForm&&active==='inventory'?<StockReceipt token={token} lang={lang} onCancel={()=>setShowReceiptForm(false)} onCreated={()=>{setShowReceiptForm(false);load('inventory');}}/>:showProductForm&&active==='inventory'?<ProductCreate token={token} lang={lang} onCancel={()=>setShowProductForm(false)} onCreated={()=>{setShowProductForm(false);load('inventory');}}/>:loading?<div className="state"><Activity/>{t.loading}</div>:error?<div className="state error">{error}</div>:active==='dashboard'?<Dashboard data={data||{}} t={t} lang={lang}/>:<Records section={active} items={items} t={t} lang={lang} token={token} canUpdate={permissions.includes('operations.update')} onChanged={()=>load(active)} onPatientSelect={setSelectedPatient}/>}
    <footer>© {new Date().getFullYear()} {t.title} · HMS</footer></section>
   </main>
  </div>;
@@ -79,7 +80,7 @@ function Dashboard({data,t,lang}) {
  const metrics=[[t.opsCount,data.operations??'—',ClipboardList],[t.patientsCount,data.patients??'—',Users],[t.doctorsCount,data.doctors??'—',Stethoscope],[t.deliveries,data.deliveries??'—',CalendarDays],[t.cost,data.totalCost===undefined?'—':new Intl.NumberFormat(lang==='ar'?'ar-EG':'en-US',{style:'currency',currency:'EGP'}).format(data.totalCost),Activity]];
  return <div className="metrics">{metrics.map(([label,value,Icon])=><article className="metric" key={label}><span><Icon size={18}/></span><small>{label}</small><strong>{value}</strong></article>)}</div>;
 }
-function Records({section,items,t,lang,token,canUpdate,onChanged}) {
+function Records({section,items,t,lang,token,canUpdate,onChanged,onPatientSelect}) {
  const [actionBusy,setActionBusy]=useState('');
  const [actionError,setActionError]=useState('');
  async function changeStatus(id,status){setActionBusy(id);setActionError('');try{await apiRequest('/api/operations/'+id+'/status',{token,method:'PATCH',body:{status}});onChanged();}catch(e){setActionError(e.message||'Request failed');}finally{setActionBusy('');}}
@@ -91,5 +92,31 @@ function Records({section,items,t,lang,token,canUpdate,onChanged}) {
   users:[[t.name,x=>x.fullName],[t.email,x=>x.email],[t.status,x=>x.status]]
  }[section]||[];
  if(!items.length)return <div className="state">{t.empty}</div>;
- return <div className="table-wrap"><table><thead><tr>{cols.map(([name])=><th key={name}>{name}</th>)}{section==='operations'&&canUpdate&&<th>{lang==='ar'?'الإجراء':'Actions'}</th>}</tr></thead><tbody>{items.map((item,i)=><tr key={item.id||i}>{cols.map(([name,get])=><td key={name}>{get(item)||'—'}</td>)}{section==='operations'&&canUpdate&&<td><div className="row-actions">{item.status==='SCHEDULED'&&<><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'IN_PROGRESS')}>{lang==='ar'?'بدء':'Start'}</button><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'CANCELLED')}>{lang==='ar'?'إلغاء':'Cancel'}</button></>}{item.status==='IN_PROGRESS'&&<><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'COMPLETED')}>{lang==='ar'?'إتمام':'Complete'}</button><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'CANCELLED')}>{lang==='ar'?'إلغاء':'Cancel'}</button></>}</div></td>}</tr>)}</tbody></table>{actionError&&<div className="error" style={{padding:'10px 14px'}}>{actionError}</div>}<small>{items.length} {lang==='ar'?'سجل':'records'}</small></div>;
+ return <div className="table-wrap"><table><thead><tr>{cols.map(([name])=><th key={name}>{name}</th>)}{section==='operations'&&canUpdate&&<th>{lang==='ar'?'الإجراء':'Actions'}</th>}</tr></thead><tbody>{items.map((item,i)=><tr key={item.id||i}>{cols.map(([name,get],colIndex)=><td key={name}>{section==='patients'&&colIndex===0?<button className="table-link" onClick={()=>onPatientSelect?.(item.id)}>{get(item)||'—'}</button>:get(item)||'—'}</td>)}{section==='operations'&&canUpdate&&<td><div className="row-actions">{item.status==='SCHEDULED'&&<><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'IN_PROGRESS')}>{lang==='ar'?'بدء':'Start'}</button><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'CANCELLED')}>{lang==='ar'?'إلغاء':'Cancel'}</button></>}{item.status==='IN_PROGRESS'&&<><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'COMPLETED')}>{lang==='ar'?'إتمام':'Complete'}</button><button disabled={actionBusy===item.id} onClick={()=>changeStatus(item.id,'CANCELLED')}>{lang==='ar'?'إلغاء':'Cancel'}</button></>}</div></td>}</tr>)}</tbody></table>{actionError&&<div className="error" style={{padding:'10px 14px'}}>{actionError}</div>}<small>{items.length} {lang==='ar'?'سجل':'records'}</small></div>;
+}
+
+
+function PatientProfile({patientId,token,lang,onBack}) {
+ const [item,setItem]=useState(null);const [error,setError]=useState('');const [loading,setLoading]=useState(true);
+ const ar=lang==='ar';
+ useEffect(()=>{let alive=true;apiRequest('/api/patients/'+patientId,{token}).then(r=>{if(alive)setItem(r.item);}).catch(e=>{if(alive)setError(e.message||'Unable to load patient');}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[patientId,token]);
+ const date=v=>v?new Intl.DateTimeFormat(ar?'ar-EG':'en-US',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'—';
+ if(loading)return <div className="state">{ar?'جارٍ تحميل ملف المريض...':'Loading patient profile...'}</div>;
+ if(error)return <div className="state error">{error}<button className="secondary" onClick={onBack}>{ar?'رجوع':'Back'}</button></div>;
+ if(!item)return null;
+ return <section className="patient-profile">
+  <div className="profile-toolbar"><button className="secondary" onClick={onBack}>{ar?'← رجوع للمرضى':'← Back to patients'}</button><span>{ar?'رقم الملف الطبي':'Medical record'}: <b>{item.medicalRecordNo}</b></span></div>
+  <div className="metric-grid">
+   <article className="metric"><small>{ar?'اسم المريض':'Patient name'}</small><strong>{item.firstName} {item.lastName}</strong></article>
+   <article className="metric"><small>{ar?'رقم الهاتف':'Phone'}</small><strong>{item.phone||'—'}</strong></article>
+   <article className="metric"><small>{ar?'الرقم القومي':'National ID'}</small><strong>{item.nationalId||'—'}</strong></article>
+   <article className="metric"><small>{ar?'تاريخ الميلاد':'Date of birth'}</small><strong>{item.dateOfBirth?date(item.dateOfBirth):'—'}</strong></article>
+  </div>
+  <article className="panel"><h2>{ar?'سجل العمليات':'Operation history'}</h2>
+   {!item.operations?.length?<p>{ar?'لا توجد عمليات مسجلة':'No operations recorded'}</p>:<div className="table-wrap"><table><thead><tr><th>{ar?'رقم العملية':'Operation'}</th><th>{ar?'النوع':'Type'}</th><th>{ar?'الطبيب':'Doctor'}</th><th>{ar?'التاريخ':'Date'}</th><th>{ar?'الحالة':'Status'}</th></tr></thead><tbody>{item.operations.map(op=><tr key={op.id}><td>{op.operationNo}</td><td>{op.operationType?.nameAr||op.operationType?.nameEn||'—'}</td><td>{op.doctor?.fullName||'—'}</td><td>{date(op.scheduledAt)}</td><td>{op.status}</td></tr>)}</tbody></table></div>}
+  </article>
+  <article className="panel"><h2>{ar?'المواعيد':'Appointments'}</h2>
+   {!item.appointments?.length?<p>{ar?'لا توجد مواعيد مسجلة':'No appointments recorded'}</p>:<div className="table-wrap"><table><thead><tr><th>{ar?'التاريخ':'Date'}</th><th>{ar?'الطبيب':'Doctor'}</th><th>{ar?'القسم':'Department'}</th><th>{ar?'الحالة':'Status'}</th></tr></thead><tbody>{item.appointments.map(a=><tr key={a.id}><td>{date(a.startsAt)}</td><td>{a.doctor?.fullName||'—'}</td><td>{a.department?.nameAr||a.department?.nameEn||'—'}</td><td>{a.status}</td></tr>)}</tbody></table></div>}
+  </article>
+ </section>;
 }
