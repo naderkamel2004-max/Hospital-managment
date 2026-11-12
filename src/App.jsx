@@ -1,23 +1,83 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, BedDouble, Bell, CalendarDays, ClipboardList, CreditCard, FlaskConical, LayoutDashboard, Languages, Package, Pill, Search, Settings, ShieldCheck, Stethoscope, Users, UserRound, FileBarChart, HeartPulse, ScanLine } from 'lucide-react';
-const words = {
- ar:{hospital:'مستشفى الشفاء',subtitle:'نظام إدارة المستشفى',dashboard:'لوحة التحكم',patients:'المرضى',appointments:'المواعيد',doctors:'الأطباء',records:'الملف الطبي',pharmacy:'الصيدلية',inventory:'المخازن',lab:'المعمل',radiology:'الأشعة',nursing:'التمريض',billing:'الفواتير',reports:'التقارير',users:'المستخدمون والصلاحيات',settings:'الإعدادات',welcome:'مرحباً بك في نظام إدارة المستشفى',description:'نظرة عامة على أداء المستشفى اليوم',search:'ابحث عن مريض أو خدمة...',patientsToday:'مرضى اليوم',appointmentsToday:'مواعيد اليوم',admissions:'حالات الدخول',occupancy:'إشغال الأسرة',weekly:'ملخص النشاط الأسبوعي',recent:'أحدث حركة المرضى',patient:'المريض',department:'القسم',doctor:'الطبيب',status:'الحالة',time:'الوقت',waiting:'في الانتظار',progress:'قيد الكشف',completed:'مكتمل',quick:'اختصارات سريعة',add:'تسجيل مريض',book:'حجز موعد',invoice:'إنشاء فاتورة',labRequest:'طلب تحليل',admin:'مدير النظام',online:'متصل الآن'},
- en:{hospital:'Al Shifa Hospital',subtitle:'Hospital Management System',dashboard:'Dashboard',patients:'Patients',appointments:'Appointments',doctors:'Doctors',records:'Medical Records',pharmacy:'Pharmacy',inventory:'Inventory',lab:'Laboratory',radiology:'Radiology',nursing:'Nursing',billing:'Billing',reports:'Reports',users:'Users & Roles',settings:'Settings',welcome:'Welcome to Hospital Management System',description:'Hospital performance overview for today',search:'Search patients or services...',patientsToday:'Patients Today',appointmentsToday:'Appointments',admissions:'Admissions',occupancy:'Bed Occupancy',weekly:'Weekly Activity',recent:'Recent Patient Activity',patient:'Patient',department:'Department',doctor:'Doctor',status:'Status',time:'Time',waiting:'Waiting',progress:'In consultation',completed:'Completed',quick:'Quick Actions',add:'Register Patient',book:'Book Appointment',invoice:'Create Invoice',labRequest:'Lab Request',admin:'System Admin',online:'Online now'}
+import { Activity, CalendarDays, ClipboardList, Languages, LayoutDashboard, LogOut, Package, Search, ShieldCheck, Stethoscope, Users, HeartPulse, RefreshCw } from 'lucide-react';
+import { apiRequest } from './lib/api.js';
+import './styles.css';
+
+const text = {
+ ar: {title:'نظام إدارة المستشفى',subtitle:'منصة التشغيل والإدارة الطبية',login:'تسجيل الدخول',email:'البريد الإلكتروني',password:'كلمة المرور',submit:'دخول آمن',dashboard:'لوحة التحكم',operations:'العمليات الجراحية',patients:'المرضى',doctors:'الأطباء',inventory:'المخزون',users:'المستخدمون',welcome:'مرحباً بك',overview:'ملخص أداء المستشفى',opsCount:'عدد العمليات',patientsCount:'المرضى',doctorsCount:'الأطباء',deliveries:'الولادات',cost:'إجمالي التكلفة',recent:'أحدث العمليات',number:'رقم العملية',patient:'المريض',doctor:'الطبيب',type:'نوع العملية',date:'التاريخ',status:'الحالة',search:'ابحث...',loading:'جارٍ تحميل البيانات...',empty:'لا توجد بيانات',logout:'تسجيل الخروج',language:'English',retry:'إعادة المحاولة',forbidden:'ليس لديك صلاحية لعرض هذا القسم',loginError:'بيانات الدخول غير صحيحة أو تعذر الاتصال بالخادم',scheduled:'مجدولة',inProgress:'جارية',completed:'مكتملة',cancelled:'ملغاة',sku:'الكود',name:'الاسم',onHand:'الرصيد المتاح'},
+ en: {title:'Hospital Management System',subtitle:'Clinical operations platform',login:'Sign in',email:'Email',password:'Password',submit:'Secure sign in',dashboard:'Dashboard',operations:'Surgical Operations',patients:'Patients',doctors:'Doctors',inventory:'Inventory',users:'Users',welcome:'Welcome back',overview:'Hospital performance overview',opsCount:'Operations',patientsCount:'Patients',doctorsCount:'Doctors',deliveries:'Deliveries',cost:'Total cost',recent:'Recent operations',number:'Operation no.',patient:'Patient',doctor:'Doctor',type:'Procedure',date:'Date',status:'Status',search:'Search...',loading:'Loading...',empty:'No records found',logout:'Sign out',language:'العربية',retry:'Retry',forbidden:'You do not have permission to view this section',loginError:'Invalid credentials or API connection failed',scheduled:'Scheduled',inProgress:'In progress',completed:'Completed',cancelled:'Cancelled',sku:'SKU',name:'Name',onHand:'Available stock'}
 };
-const nav=[['dashboard',LayoutDashboard],['patients',Users],['appointments',CalendarDays],['doctors',Stethoscope],['records',ClipboardList],['pharmacy',Pill],['inventory',Package],['lab',FlaskConical],['radiology',ScanLine],['nursing',HeartPulse],['billing',CreditCard],['reports',FileBarChart],['users',ShieldCheck],['settings',Settings]];
-const sample=[['PT-2048','أحمد محمد علي','الباطنة','د. محمود حسن','progress','09:30'],['PT-2047','سارة إبراهيم','الأطفال','د. منى أحمد','waiting','09:15'],['PT-2046','محمد السيد','العظام','د. كريم عادل','completed','09:00']];
-export default function App(){
- const [lang,setLang]=useState('ar'),[active,setActive]=useState('dashboard'),[query,setQuery]=useState('');
- const rtl=lang==='ar',t=words[lang];
- useEffect(()=>{document.documentElement.lang=lang;document.documentElement.dir=rtl?'rtl':'ltr';document.body.dir=rtl?'rtl':'ltr'},[lang,rtl]);
- const metrics=[[t.patientsToday,'128',Users,'blue'],[t.appointmentsToday,'42',CalendarDays,'violet'],[t.admissions,'16',BedDouble,'teal'],[t.occupancy,'78%',Activity,'orange']];
- const rows=sample.filter(r=>r.join(' ').toLowerCase().includes(query.toLowerCase()));
- return <div className={`app ${rtl?'rtl':'ltr'}`}>
-  <aside className="sidebar"><div className="brand"><div className="brand-icon"><HeartPulse/></div><div><b>{t.hospital}</b><small>{t.subtitle}</small></div></div><div className="nav-label">{t.dashboard}</div><nav>{nav.map(([key,Icon])=><button key={key} className={active===key?'nav active':'nav'} onClick={()=>setActive(key)}><Icon size={18}/><span>{t[key]}</span></button>)}</nav><div className="sidebar-foot"><ShieldCheck size={17}/>{rtl?'بيئة عمل آمنة':'Secure workspace'}</div></aside>
-  <main className="main"><header className="topbar"><div className="crumb">{t.dashboard} / {t[active]}</div><div className="top-actions"><label className="search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search}/></label><button className="language" onClick={()=>setLang(rtl?'en':'ar')}><Languages size={17}/>{rtl?'English':'العربية'}</button><Bell size={19}/><div className="profile"><span>م</span><div><b>{t.admin}</b><small>{t.online}</small></div></div></div></header>
-  <section className="content"><div className="welcome"><div><small className="date">{rtl?'الخميس، 12 نوفمبر 2026':'Thursday, November 12, 2026'}</small><h1>{active==='dashboard'?t.welcome:t[active]}</h1><p>{t.description}</p></div><button className="primary" onClick={()=>setActive('patients')}><UserRound size={17}/>{t.add}</button></div>
-  {active==='dashboard'?<><div className="metrics">{metrics.map(([label,value,Icon,color])=><article className="metric" key={label}><div className="metric-head"><span>{label}</span><i className={color}><Icon size={19}/></i></div><strong>{value}</strong><small className="growth">+8.5% <span>{rtl?'مقارنة بالأمس':'vs yesterday'}</span></small></article>)}</div>
-  <div className="panels"><article className="panel"><div className="panel-head"><div><h2>{t.weekly}</h2><small>{rtl?'عدد الزيارات اليومية':'Daily visits'}</small></div><span className="period">{rtl?'آخر 7 أيام':'Last 7 days'}</span></div><div className="chart"><div className="bars">{[42,62,50,78,58,88,70].map((n,i)=><div className="bar-col" key={i}><i style={{height:n+'%'}}/><small>{(rtl?['س','ح','ن','ث','ر','خ','ج']:['S','S','M','T','W','T','F'])[i]}</small></div>)}</div></div></article><article className="panel departments"><h2>{rtl?'الأقسام الأكثر نشاطاً':'Most Active Departments'}</h2><div className="donut"><b>1,284</b><small>{rtl?'زيارة':'visits'}</small></div><div className="legend"><span>● {rtl?'الباطنة':'Internal'} 35%</span><span>● {rtl?'الأطفال':'Pediatrics'} 25%</span><span>● {rtl?'العظام':'Orthopedics'} 20%</span><span>● {rtl?'أخرى':'Other'} 20%</span></div></article></div>
-  <div className="panels lower"><article className="panel"><div className="panel-head"><h2>{t.recent}</h2><button className="link" onClick={()=>setActive('patients')}>{rtl?'عرض الكل':'View all'}</button></div><div className="table-wrap"><table><thead><tr>{[t.patient,t.department,t.doctor,t.status,t.time].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map(r=><tr key={r[0]}><td><b>{r[1]}</b><small className="id">{r[0]}</small></td><td>{r[2]}</td><td>{r[3]}</td><td><span className={'status '+r[4]}>{t[r[4]]||t.progress}</span></td><td>{r[5]}</td></tr>)}</tbody></table></div></article><article className="panel"><h2>{t.quick}</h2><div className="quick">{[[UserRound,t.add,'patients'],[CalendarDays,t.book,'appointments'],[CreditCard,t.invoice,'billing'],[FlaskConical,t.labRequest,'lab']].map(([Icon,label,key])=><button key={key} onClick={()=>setActive(key)}><Icon size={19}/>{label}<span>↗</span></button>)}</div></article></div></>:<article className="panel empty"><div className="empty-icon"><LayoutDashboard size={28}/></div><h2>{t[active]}</h2><p>{rtl?'هذا القسم ضمن نطاق النظام وسيتم ربط وظائفه وقاعدة بياناته في مراحل التطوير التالية.':'This module is in scope and its workflows and database will be connected in upcoming development phases.'}</p><button className="primary" onClick={()=>setActive('dashboard')}><LayoutDashboard size={17}/>{t.dashboard}</button></article>}
-  <footer>© 2026 {t.hospital} · HMS</footer></section></main></div>;
+const nav = [['dashboard','dashboard',LayoutDashboard],['operations','operations',ClipboardList],['patients','patients',Users],['doctors','doctors',Stethoscope],['inventory','inventory',Package],['users','users',ShieldCheck]];
+const apiPaths = {dashboard:'/api/dashboard/summary',operations:'/api/operations',patients:'/api/patients?page=1&pageSize=50',doctors:'/api/doctors',inventory:'/api/inventory/products',users:'/api/users'};
+const statusText = (v,t) => ({SCHEDULED:t.scheduled,IN_PROGRESS:t.inProgress,COMPLETED:t.completed,CANCELLED:t.cancelled}[v] || v || '—');
+const dateText = (v,lang) => v ? new Intl.DateTimeFormat(lang==='ar'?'ar-EG':'en-GB',{dateStyle:'medium'}).format(new Date(v)) : '—';
+
+export default function App() {
+ const [lang,setLang]=useState('ar');
+ const [token,setToken]=useState('');
+ const [user,setUser]=useState(null);
+ const [active,setActive]=useState('dashboard');
+ const [email,setEmail]=useState('');
+ const [password,setPassword]=useState('');
+ const [busy,setBusy]=useState(false);
+ const [loading,setLoading]=useState(false);
+ const [error,setError]=useState('');
+ const [data,setData]=useState(null);
+ const [query,setQuery]=useState('');
+ const t=text[lang], rtl=lang==='ar';
+ useEffect(()=>{document.documentElement.lang=lang;document.documentElement.dir=rtl?'rtl':'ltr';document.body.dir=rtl?'rtl':'ltr';},[lang,rtl]);
+ async function signIn(e) {
+  e.preventDefault();setBusy(true);setError('');
+  try { const result=await apiRequest('/api/auth/login',{method:'POST',body:{email,password}});setToken(result.accessToken);setUser(result.user); }
+  catch { setError(t.loginError); } finally { setBusy(false); }
+ }
+ async function load(section) {
+  if(!token)return;
+  setLoading(true);setError('');setData(null);
+  try { setData(await apiRequest(apiPaths[section],{token})); }
+  catch(e) { setError(e.status===403?t.forbidden:(e.status===0?t.loginError:(e.message||t.empty))); }
+  finally { setLoading(false); }
+ }
+ useEffect(()=>{if(token)load(active);},[token,active]);
+ function logout(){setToken('');setUser(null);setData(null);setActive('dashboard');setError('');}
+ if(!token) return <div className="login-screen" dir={rtl?'rtl':'ltr'}>
+  <form className="login-card" onSubmit={signIn}>
+   <div className="brand-symbol"><HeartPulse size={30}/></div><h1>{t.title}</h1><p>{t.subtitle}</p>
+   <h2>{t.login}</h2>
+   <label>{t.email}<input type="email" required autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)}/></label>
+   <label>{t.password}<input type="password" required autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)}/></label>
+   {error&&<div className="error">{error}</div>}
+   <button className="primary" disabled={busy}>{busy?t.loading:t.submit}</button>
+   <button type="button" className="lang-switch" onClick={()=>setLang(rtl?'en':'ar')}><Languages size={16}/>{t.language}</button>
+   <small className="secure-note"><ShieldCheck size={14}/> {rtl?'الصلاحيات يتم التحقق منها عند كل طلب':'Permissions are checked on every request'}</small>
+  </form>
+ </div>;
+ const items=(data?.items||[]).filter(item=>!query||JSON.stringify(item).toLowerCase().includes(query.toLowerCase()));
+ return <div className="app" dir={rtl?'rtl':'ltr'}>
+  <aside className="sidebar"><div className="brand"><span className="brand-symbol"><HeartPulse/></span><div><b>{t.title}</b><small>{t.subtitle}</small></div></div>
+   <div className="nav-title">{rtl?'القائمة الرئيسية':'MAIN MENU'}</div>
+   {nav.map(([id,key,Icon])=><button key={id} className={active===id?'nav-link selected':'nav-link'} onClick={()=>{setActive(id);setQuery('');}}><Icon size={18}/>{t[key]}</button>)}
+   <div className="sidebar-foot"><ShieldCheck size={16}/>{rtl?'جلسة آمنة':'Secure session'}</div>
+  </aside>
+  <main className="main"><header className="topbar"><span>{t.dashboard} / {t[active]}</span><div className="top-actions"><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search}/></label><button className="secondary" onClick={()=>setLang(rtl?'en':'ar')}><Languages size={16}/>{t.language}</button><div className="user"><b>{user?.fullName||'—'}</b><small>{user?.role||'—'}</small></div><button className="secondary" onClick={logout}><LogOut size={16}/>{t.logout}</button></div></header>
+   <section className="content"><div className="heading"><div><small>{t.title}</small><h1>{active==='dashboard'?t.welcome:t[active]}</h1><p>{t.overview}</p></div><button className="secondary" onClick={()=>load(active)}><RefreshCw size={16}/>{t.retry}</button></div>
+   {loading?<div className="state"><Activity/>{t.loading}</div>:error?<div className="state error">{error}</div>:active==='dashboard'?<Dashboard data={data||{}} t={t} lang={lang}/>:<Records section={active} items={items} t={t} lang={lang}/>}
+   <footer>© {new Date().getFullYear()} {t.title} · HMS</footer></section>
+  </main>
+ </div>;
+}
+function Dashboard({data,t,lang}) {
+ const metrics=[[t.opsCount,data.operations??'—',ClipboardList],[t.patientsCount,data.patients??'—',Users],[t.doctorsCount,data.doctors??'—',Stethoscope],[t.deliveries,data.deliveries??'—',CalendarDays],[t.cost,data.totalCost===undefined?'—':new Intl.NumberFormat(lang==='ar'?'ar-EG':'en-US',{style:'currency',currency:'EGP'}).format(data.totalCost),Activity]];
+ return <div className="metrics">{metrics.map(([label,value,Icon])=><article className="metric" key={label}><span><Icon size={18}/></span><small>{label}</small><strong>{value}</strong></article>)}</div>;
+}
+function Records({section,items,t,lang}) {
+ const cols={
+  operations:[[t.number,x=>x.operationNo],[t.patient,x=>x.patient?.firstName+' '+x.patient?.lastName],[t.doctor,x=>x.doctor?.fullName],[t.type,x=>x.operationType?.nameAr||x.operationType?.nameEn],[t.date,x=>dateText(x.scheduledAt,lang)],[t.status,x=>statusText(x.status,t)]],
+  patients:[[t.patient,x=>x.firstName+' '+x.lastName],[t.number,x=>x.medicalRecordNo],[t.date,x=>dateText(x.createdAt,lang)]],
+  doctors:[[t.doctor,x=>x.fullName],[t.type,x=>x.specialty||'—']],
+  inventory:[[t.sku,x=>x.sku],[t.name,x=>x.nameAr||x.nameEn],[t.onHand,x=>x.onHand??'—']],
+  users:[[t.name,x=>x.fullName],[t.email,x=>x.email],[t.status,x=>x.status]]
+ }[section]||[];
+ if(!items.length)return <div className="state">{t.empty}</div>;
+ return <div className="table-wrap"><table><thead><tr>{cols.map(([name])=><th key={name}>{name}</th>)}</tr></thead><tbody>{items.map((item,i)=><tr key={item.id||i}>{cols.map(([name,get])=><td key={name}>{get(item)||'—'}</td>)}</tr>)}</tbody></table><small>{items.length} {lang==='ar'?'سجل':'records'}</small></div>;
 }
