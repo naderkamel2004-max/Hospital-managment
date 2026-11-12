@@ -87,14 +87,14 @@ function runBinary(executable, args, options = {}) {
   });
 }
 
-async function waitForDatabase(pgIsReady) {
+async function waitForDatabase(pgIsReady, password, env) {
   for (let attempt = 0; attempt < 90; attempt++) {
     if (postgresStartupError) throw postgresStartupError;
     if (postgres && postgres.exitCode !== null) {
       throw new Error('The PostgreSQL process exited before the database became ready. See startup.log.');
     }
     try {
-      await runBinary(pgIsReady, ['-h', '127.0.0.1', '-p', '55432', '-U', 'hms', '-d', 'hms']);
+      await runBinary(pgIsReady, ['-h', '127.0.0.1', '-p', '55432', '-U', 'hms', '-d', 'hms'], { env: { ...env, PGPASSWORD: password } });
       log('INFO', 'Local PostgreSQL is accepting connections.');
       return;
     } catch (error) {
@@ -158,7 +158,7 @@ async function startDatabase() {
       log('ERROR', 'PostgreSQL stopped unexpectedly', postgresStartupError);
     }
   });
-  await waitForDatabase(pgIsReady);
+  await waitForDatabase(pgIsReady, password, env);
 
   return 'postgresql://hms:' + encodeURIComponent(password) + '@127.0.0.1:55432/hms?schema=public';
 }
