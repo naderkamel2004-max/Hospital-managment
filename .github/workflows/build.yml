@@ -40,8 +40,17 @@ jobs:
       - name: Validate Prisma schema
         working-directory: server
         run: npx prisma validate
+      - name: Generate Prisma client
+        working-directory: server
+        run: npx prisma generate
       - name: Check API JavaScript syntax
         run: |
           node --check server/src/index.js
           node --check server/src/routes/auth.js
+          node --check server/src/routes/patients.js
+          node --check server/src/routes/departments.js
+          node --check server/src/routes/appointments.js
+          node --check server/src/routes/operations.js
+          node --check server/src/routes/doctors.js
+          node --check server/src/routes/dashboard.js
           node --check server/src/middleware/auth.js
