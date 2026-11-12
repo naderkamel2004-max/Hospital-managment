@@ -18,7 +18,7 @@ inventoryRouter.post('/products',requirePermission('inventory.manage'),async(req
  await prisma.auditLog.create({data:{userId:req.user.id,action:'PRODUCT_CREATED',entity:'Product',entityId:item.id,ipAddress:req.ip,afterData:p.data}});
  res.status(201).json({item:protectProduct(item,canReadInventoryCosts(req.user))});
 }catch(error){if(error.code==='P2002')return res.status(409).json({error:'SKU already exists'});next(error);}});
-inventoryRouter.post('/receipts',requirePermission('inventory.receive'),async(req,res,next)=>{try{
+inventoryRouter.post('/receipts',requirePermission('inventory.receive'),requirePermission('inventory.costs.write'),async(req,res,next)=>{try{
  const p=z.object({productId:z.string().min(1),batchNo:z.string().trim().min(1).max(80),expiryDate:z.coerce.date().optional().nullable(),quantity:z.coerce.number().positive().max(1000000),unitCost:z.coerce.number().nonnegative().max(100000000)}).safeParse(req.body);
  if(!p.success)return res.status(400).json({error:'Invalid stock receipt',details:p.error.flatten()});
  const product=await prisma.product.findUnique({where:{id:p.data.productId}});

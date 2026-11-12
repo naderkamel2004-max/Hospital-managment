@@ -21,14 +21,10 @@ const operationSchema=z.object({
   doctorId:z.string().min(1),
   operationTypeId:z.string().min(1),
   scheduledAt:z.coerce.date(),
-  startedAt:z.coerce.date().optional().nullable(),
-  endedAt:z.coerce.date().optional().nullable(),
-  status:z.enum(['SCHEDULED','IN_PROGRESS','COMPLETED','CANCELLED']).default('SCHEDULED'),
+  status:z.literal('SCHEDULED').default('SCHEDULED'),
   notes:z.string().trim().max(5000).optional().nullable(),
   items:z.array(itemSchema).max(300).default([])
 }).superRefine((operation,ctx)=>{
-  if(operation.status==='CANCELLED')ctx.addIssue({code:'custom',path:['status'],message:'Create the operation first; use the cancellation workflow to cancel it safely'});
-  if(operation.startedAt&&operation.endedAt&&operation.endedAt<operation.startedAt)ctx.addIssue({code:'custom',path:['endedAt'],message:'Operation end time cannot be earlier than start time'});
 });
 const include={patient:{select:{id:true,medicalRecordNo:true,firstName:true,lastName:true}},doctor:{select:{id:true,fullName:true,specialty:true}},operationType:{select:{id:true,code:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}},items:true};
 function canReadCosts(user){return user.role==='SUPER_ADMIN'||user.permissions?.includes('operations.costs.read');}
@@ -99,8 +95,11 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
   if(scope.AND?.some(rule=>rule.doctorId&&!rule.doctorId.in.includes(data.doctorId)||rule.patientId&&!rule.patientId.in.includes(data.patientId)))throw Object.assign(new Error('Operation is outside your assigned access scope'),{status:403});
   const normalized=[];const movements=[];
   for(const entry of items){
-   if(!entry.productId){normalized.push(entry);continue;}
-   const product=await tx.product.findUnique({where:{id:entry.productId},select:{id:true,nameAr:true,unit:true,category:true,isActive:true}});
+   if(!entry.productId){
+    if(!req.user.permissions?.includes('operations.costs.write')&&req.user.role!=='SUPER_ADMIN')throw Object.assign(new Error('Manual operation items require cost-entry permission'),{status:403});
+    normalized.push(entry);continue;
+   }
+   const product=await tx.product.findUnique({where:{id:entry.productId},select:{id:true,nameAr:true,unit:true,category:true,isActive:true,sellingPrice:true}});
    if(!product?.isActive)throw Object.assign(new Error('Active inventory product not found'),{status:400});
    if(entry.category&&product.category!==entry.category)throw Object.assign(new Error('Item category does not match inventory product'),{status:400});
    const batches=await tx.stockItem.findMany({where:{productId:product.id,quantity:{gt:0},OR:[{expiryDate:null},{expiryDate:{gte:new Date()}}]},orderBy:[{expiryDate:'asc'},{createdAt:'asc'}]});
@@ -115,7 +114,7 @@ operationsRouter.post('/',requirePermission('operations.create'),async(req,res,n
     totalValue+=take*Number(batch.unitCost);remaining-=take;
    }
    if(remaining>0)throw Object.assign(new Error('Insufficient non-expired stock for '+product.nameAr),{status:409});
-   normalized.push({...entry,itemName:product.nameAr,unit:product.unit,category:product.category,purchaseUnitPrice:Number((totalValue/entry.quantity).toFixed(4))});
+   normalized.push({...entry,itemName:product.nameAr,unit:product.unit,category:product.category,purchaseUnitPrice:Number((totalValue/entry.quantity).toFixed(2)),sellingUnitPrice:product.sellingPrice===null?null:Number(product.sellingPrice)});
   }
   const totals=calculate(normalized);
   const {lines,...costTotals}=totals;
