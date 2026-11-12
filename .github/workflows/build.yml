@@ -24,6 +24,20 @@ jobs:
 
   backend-check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hms
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: hms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hms -d hms"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://hms:password@localhost:5432/hms?schema=public
       JWT_ACCESS_SECRET: ci-only-secret-change-me-before-production-123456
@@ -43,6 +57,12 @@ jobs:
       - name: Generate Prisma client
         working-directory: server
         run: npx prisma generate
+      - name: Apply schema to clean PostgreSQL
+        working-directory: server
+        run: npx prisma db push --skip-generate
+      - name: Run backend unit tests
+        working-directory: server
+        run: npm test
       - name: Check API JavaScript syntax
         run: |
           node --check server/src/index.js
@@ -58,3 +78,4 @@ jobs:
           node --check server/src/routes/inventory.js
           node --check server/src/routes/audit.js
           node --check server/src/middleware/auth.js
+          node --check server/src/lib/authorization.js

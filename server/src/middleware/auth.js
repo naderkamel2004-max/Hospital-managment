@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
+import { resolvePermissions } from '../lib/authorization.js';
 
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
@@ -43,17 +44,10 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'Account is inactive or locked' });
     }
 
-    const permissionMap = new Map(
-      user.role.permissions.map(({ permission }) => [permission.code, true])
-    );
-    for (const override of user.userPermissions) {
-      permissionMap.set(override.permission.code, override.allowed);
-    }
-
     req.user = {
       id: user.id,
       role: user.role.code,
-      permissions: [...permissionMap].filter(([, allowed]) => allowed).map(([code]) => code),
+      permissions: resolvePermissions(user.role.permissions, user.userPermissions),
       scopes: user.scopes
     };
     return next();
