@@ -15,6 +15,10 @@ extraResources:
       - "**/*"
       - "!**/.env"
       - "!**/test/**"
+  - from: server/node_modules
+    to: server/node_modules
+    filter:
+      - "**/*"
   - from: build-resources/node
     to: node
     filter:
