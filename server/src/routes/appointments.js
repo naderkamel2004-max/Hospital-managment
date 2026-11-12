@@ -27,3 +27,29 @@ appointmentsRouter.post('/',requirePermission('appointments.create'),async(req,r
  const item=await prisma.$transaction(async tx=>{const created=await tx.appointment.create({data:{patientId,doctorId,departmentId,startsAt,reason},include:{patient:{select:{medicalRecordNo:true,firstName:true,lastName:true}},doctor:{select:{fullName:true}},department:{select:{nameAr:true,nameEn:true}}}});await tx.auditLog.create({data:{userId:req.user.id,action:'APPOINTMENT_CREATED',entity:'Appointment',entityId:created.id,ipAddress:req.ip}});return created;});
  res.status(201).json({item});
 }catch(error){next(error);}});
+
+appointmentsRouter.patch('/:id',requirePermission('appointments.update'),async(req,res,next)=>{try{
+ const updateSchema=z.object({status:z.enum(['CONFIRMED','CHECKED_IN','COMPLETED','CANCELLED','NO_SHOW']).optional(),startsAt:z.coerce.date().optional(),reason:z.string().trim().max(500).nullable().optional()}).strict().refine(v=>Object.keys(v).length>0);
+ const parsed=updateSchema.safeParse(req.body);if(!parsed.success)return res.status(400).json({error:'Invalid appointment update',details:parsed.error.flatten()});
+ const result=await prisma.$transaction(async tx=>{
+  const where=combineWhere({id:req.params.id},appointmentScopeWhere(req.user));
+  const before=await tx.appointment.findFirst({where,select:{id:true,status:true,startsAt:true,reason:true,doctorId:true,patientId:true}});
+  if(!before)throw Object.assign(new Error('Appointment not found'),{status:404});
+  const data=parsed.data;
+  if(data.status){
+   const transitions={BOOKED:['CONFIRMED','CANCELLED','NO_SHOW'],CONFIRMED:['CHECKED_IN','CANCELLED','NO_SHOW'],CHECKED_IN:['COMPLETED']};
+   if(!transitions[before.status]?.includes(data.status))throw Object.assign(new Error('Invalid appointment status transition'),{status:409});
+  }
+  if(data.startsAt&& !['BOOKED','CONFIRMED'].includes(before.status))throw Object.assign(new Error('Only booked or confirmed appointments can be rescheduled'),{status:409});
+  if(data.startsAt){
+   const conflict=await tx.appointment.findFirst({where:{doctorId:before.doctorId,startsAt:data.startsAt,status:{in:['BOOKED','CONFIRMED','CHECKED_IN']},id:{not:before.id}},select:{id:true}});
+   if(conflict)throw Object.assign(new Error('Doctor already has an appointment at this exact time'),{status:409});
+  }
+  const changed=await tx.appointment.updateMany({where:{id:before.id,status:before.status,startsAt:before.startsAt},data});
+  if(changed.count!==1)throw Object.assign(new Error('Appointment changed concurrently; refresh and retry'),{status:409});
+  const item=await tx.appointment.findUnique({where:{id:before.id},include:{patient:{select:{id:true,medicalRecordNo:true,firstName:true,lastName:true,phone:true}},doctor:{select:{id:true,fullName:true,specialty:true}},department:{select:{id:true,nameAr:true,nameEn:true}}}});
+  await tx.auditLog.create({data:{userId:req.user.id,action:'APPOINTMENT_UPDATED',entity:'Appointment',entityId:item.id,ipAddress:req.ip,beforeData:{status:before.status,startsAt:before.startsAt,reason:before.reason},afterData:{status:item.status,startsAt:item.startsAt,reason:item.reason}}});
+  return item;
+ });
+ res.json({item:result});
+}catch(error){next(error);}});

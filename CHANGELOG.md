@@ -11,3 +11,5 @@ All notable project increments are recorded here.
 - Patient profile editing awaits its own GitHub Actions result.
 
 - Added inventory adjustment endpoint using an optimistic quantity check, immutable stock movement and audit event; introduced `inventory.adjust` permission and integration coverage.
+
+- Added appointment rescheduling and controlled status transitions with resource-scope enforcement, exact-time doctor collision detection, optimistic concurrency and audit logging; added `appointments.update` permission and integration coverage.

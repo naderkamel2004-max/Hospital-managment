@@ -10,12 +10,15 @@ Doctor edit API and frontend workflow. Commit: `7072d48eee5caa5accd369d22601ec27
 ## Last completed task
 Patient profile editing UI connected to the existing `PATCH /api/patients/:id` endpoint. Permission-gated by `patients.update`; demographic/contact fields reload after save. Commit: `9b5c68953f6b98a8b3e3b88abdd7fcee97e44428` (CI pending at state update).
 
+## Last completed task
+Inventory stock adjustment API with dedicated permission, optimistic concurrency guard, movement record and audit event; integration test covers forbidden and successful adjustment. Commit: `1e5ba34d589a283e39e3cad6f39b4c15b89a72eb` (CI pending at state update).
+
 ## Current active task
-Inventory stock adjustments and physical stock counts: transaction-safe absolute counted quantity update, optimistic concurrency guard, immutable stock movement, audit trail and dedicated permission.
+Appointment lifecycle API: permission-gated rescheduling and status transitions, scoped lookup, optimistic concurrency check, collision check for exact doctor/time slots, and audit logging.
 
 ## Pending tasks (priority order)
 1. Verify the patient profile editing increment through GitHub Actions; fix any build/test failure.
-2. Verify inventory adjustment integration test and CI; add movement history/read UI and stock count UX.
+2. Verify appointment lifecycle integration tests and CI; then build appointment UI and inventory movement history.
 3. Implement appointment reschedule/status/cancel lifecycle and UI.
 4. Complete doctor deactivate/reactivate workflow.
 5. Implement department administration.
@@ -50,4 +53,4 @@ GitHub Actions run `43137138590` on commit `7072d48eee5caa5accd369d22601ec27e5a8
 - No real patient data may be used.
 
 ## Exact next action
-Commit the inventory adjustment API, permission seed and PostgreSQL integration coverage together with updated progress files. Check both pending Actions runs; fix any failure before starting the appointment lifecycle.
+Commit the appointment lifecycle API, permission seed and PostgreSQL integration coverage together with updated state. Check the inventory CI run and the new appointment CI run; inspect logs and fix any failure.

@@ -11,7 +11,7 @@ This roadmap is ordered by dependencies and operational risk. Update it when an 
 - [x] FIFO stock deduction and cancellation reversal
 - [x] Inventory product catalog and stock receipts
 - [ ] Patient encounter creation, editing and closure
-- [ ] Appointment create/reschedule/status/cancel lifecycle and UI
+- [x] Appointment reschedule/status/cancel API with scope checks, concurrency protection and audit trail (CI verification pending)\n- [ ] Appointment create/reschedule/status/cancel UI and schedule conflict UX
 - [ ] Operation detail, edit safeguards and complete UI
 - [ ] Doctor deactivate/reactivate with audit trail
 - [x] Inventory adjustment API with count-based quantity correction, concurrency guard, movement and audit records (CI verification pending)\n- [ ] Inventory stock count UI, movement history, returns and transfers
