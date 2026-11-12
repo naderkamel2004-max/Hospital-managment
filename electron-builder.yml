@@ -1,0 +1,26 @@
+appId: com.hospitalmanagement.desktop
+productName: Hospital Management
+asar: true
+directories:
+  output: dist-electron
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+extraResources:
+  - from: server
+    to: server
+    filter:
+      - "**/*"
+      - "!**/.env"
+      - "!**/test/**"
+  - from: build-resources/postgres
+    to: postgres
+    filter:
+      - "**/*"
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+  artifactName: Hospital-Management-Portable-${version}-${arch}.exe
