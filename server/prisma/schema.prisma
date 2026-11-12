@@ -1,3 +1,4 @@
+// Versioned database schema. Generate and commit migrations whenever this file changes.
 generator client {
   provider = "prisma-client-js"
 }

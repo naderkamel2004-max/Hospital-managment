@@ -1,6 +1,10 @@
 name: Generate Initial Database Migration
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/prisma/schema.prisma'
   workflow_dispatch:
 
 permissions:
