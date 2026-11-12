@@ -1,6 +1,7 @@
 import {Router} from 'express';
 import {prisma} from '../lib/prisma.js';
 import {requireAuth,requirePermission} from '../middleware/auth.js';
+import { operationScopeWhere, patientScopeWhere, doctorScopeWhere, combineWhere } from '../lib/access-scopes.js';
 export const dashboardRouter=Router();
 dashboardRouter.use(requireAuth,requirePermission('dashboard.read'));
 dashboardRouter.get('/summary',async(req,res,next)=>{try{
@@ -10,16 +11,11 @@ dashboardRouter.get('/summary',async(req,res,next)=>{try{
  const where={scheduledAt:{gte:from,lte:to},status:{not:'CANCELLED'}};
  if(typeof req.query.doctorId==='string')where.doctorId=req.query.doctorId;
  if(typeof req.query.operationTypeId==='string')where.operationTypeId=req.query.operationTypeId;
- if(req.user.role!=='SUPER_ADMIN'){
-  const doctorScopes=req.user.scopes.filter(x=>x.resource==='doctor').map(x=>x.resourceId);
-  const patientScopes=req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId);
-  if(doctorScopes.length)where.doctorId={in:doctorScopes};
-  if(patientScopes.length)where.patientId={in:patientScopes};
- }
+ const scopedWhere=combineWhere(where,operationScopeWhere(req.user));
  const [ops,doctors,patients]=await Promise.all([
-  prisma.operation.findMany({where,select:{totalCost:true,consumablesCost:true,operationType:{select:{isDelivery:true,isCesarean:true}}},take:10000}),
-  prisma.doctor.count(),
-  prisma.patient.count()
+  prisma.operation.findMany({where:scopedWhere,select:{totalCost:true,consumablesCost:true,operationType:{select:{isDelivery:true,isCesarean:true}}},take:10000}),
+  prisma.doctor.count({where:doctorScopeWhere(req.user)}),
+  prisma.patient.count({where:patientScopeWhere(req.user)})
  ]);
  const totalCost=ops.reduce((n,x)=>n+Number(x.totalCost),0);
  const financial=req.user.role==='SUPER_ADMIN'||req.user.permissions.includes('operations.costs.read')?{totalCost:Number(totalCost.toFixed(2)),averageCost:ops.length?Number((totalCost/ops.length).toFixed(2)):0,consumablesCost:Number(ops.reduce((n,x)=>n+Number(x.consumablesCost),0).toFixed(2))}:{};
