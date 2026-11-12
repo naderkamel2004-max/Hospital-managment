@@ -5,6 +5,9 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { authRouter } from './routes/auth.js';
 import { requireAuth } from './middleware/auth.js';
+import { patientsRouter } from './routes/patients.js';
+import { departmentsRouter } from './routes/departments.js';
+import { appointmentsRouter } from './routes/appointments.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -12,6 +15,9 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') ?? 'http://localhost:5173', credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false }), authRouter);
+app.use('/api/patients', patientsRouter);
+app.use('/api/departments', departmentsRouter);
+app.use('/api/appointments', appointmentsRouter);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'hms-api' }));
 app.get('/api/me', requireAuth, (req, res) => res.json({ user: req.user }));
 app.use((err, _req, res, _next) => {
