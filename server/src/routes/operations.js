@@ -93,16 +93,32 @@ operationsRouter.get('/analytics',requirePermission('operations.read'),async(req
 }catch(error){next(error);}});
 operationsRouter.post('/',requirePermission('operations.create'),async(req,res,next)=>{try{
  const p=operationSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid operation data',details:p.error.flatten()});
- const {items,...data}=p.data;const totals=calculate(items);
+ const {items,...data}=p.data;
  const item=await prisma.$transaction(async tx=>{
   const [patient,doctor,type]=await Promise.all([tx.patient.findUnique({where:{id:data.patientId},select:{id:true}}),tx.doctor.findUnique({where:{id:data.doctorId},select:{id:true}}),tx.operationType.findUnique({where:{id:data.operationTypeId},select:{id:true,isActive:true}})]);
   if(!patient||!doctor||!type?.isActive)throw Object.assign(new Error('Patient, doctor or active operation type not found'),{status:400});
-  if(items.some(x=>x.productId)) {
-   const ids=[...new Set(items.map(x=>x.productId).filter(Boolean))];
-   const products=await tx.product.findMany({where:{id:{in:ids}},select:{id:true,nameAr:true,unit:true}});
-   if(products.length!==ids.length)throw Object.assign(new Error('One or more inventory products were not found'),{status:400});
+  const normalized=[];
+  for(const entry of items){
+   if(!entry.productId){normalized.push(entry);continue;}
+   const product=await tx.product.findUnique({where:{id:entry.productId},select:{id:true,nameAr:true,unit:true,category:true,isActive:true}});
+   if(!product?.isActive)throw Object.assign(new Error('Active inventory product not found'),{status:400});
+   if(product.category!==entry.category)throw Object.assign(new Error('Item category does not match inventory product'),{status:400});
+   const batches=await tx.stockItem.findMany({where:{productId:product.id,quantity:{gt:0},OR:[{expiryDate:null},{expiryDate:{gte:new Date()}}]},orderBy:[{expiryDate:'asc'},{createdAt:'asc'}]});
+   let remaining=entry.quantity,totalValue=0;
+   for(const batch of batches){
+    if(remaining<=0)break;
+    const available=Number(batch.quantity),take=Math.min(available,remaining);
+    if(take<=0)continue;
+    await tx.stockItem.update({where:{id:batch.id},data:{quantity:{decrement:take}}});
+    await tx.stockMovement.create({data:{productId:product.id,stockItemId:batch.id,movementType:'OPERATION_CONSUMPTION',quantity:-take,unitCost:batch.unitCost,referenceType:'OperationPending',performedById:req.user.id}});
+    totalValue+=take*Number(batch.unitCost);remaining-=take;
+   }
+   if(remaining>0)throw Object.assign(new Error('Insufficient non-expired stock for '+product.nameAr),{status:409});
+   normalized.push({...entry,itemName:product.nameAr,unit:product.unit,purchaseUnitPrice:Number((totalValue/entry.quantity).toFixed(4))});
   }
+  const totals=calculate(normalized);
   const created=await tx.operation.create({data:{...data,...totals,createdById:req.user.id,items:{create:totals.lines.map(({itemName,unit,...line})=>({...line,itemNameSnapshot:itemName,unitSnapshot:unit}))}},include});
+  await tx.stockMovement.updateMany({where:{referenceType:'OperationPending',performedById:req.user.id,referenceId:null},data:{referenceType:'Operation',referenceId:created.id}});
   await tx.auditLog.create({data:{userId:req.user.id,action:'OPERATION_CREATED',entity:'Operation',entityId:created.id,ipAddress:req.ip,afterData:{operationNo:created.operationNo,totalCost:totals.totalCost,itemCount:items.length}}});
   return created;
  });
