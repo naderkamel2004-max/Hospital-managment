@@ -66,6 +66,7 @@ jobs:
           $testProfile = Join-Path $env:SystemDrive "Users\$testUser"
           $testData = Join-Path $testProfile "AppData\Roaming\Hospital Management"
           New-Item -ItemType Directory -Force -Path $testData | Out-Null
+          $env:HMS_TEST_USER_DATA = $testData
           $process = $null
           try {
             $process = Start-Process -FilePath $app -ArgumentList "--disable-gpu" -Credential $credential -LoadUserProfile -PassThru
