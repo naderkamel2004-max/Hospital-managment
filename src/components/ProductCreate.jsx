@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { apiRequest } from '../lib/api.js';
 
-export default function ProductCreate({ token, lang, onCancel, onCreated }) {
+export default function ProductCreate({ token, lang, canWriteCosts = false, onCancel, onCreated }) {
   const ar = lang === 'ar';
   const [form, setForm] = useState({ sku: '', nameAr: '', nameEn: '', category: 'CONSUMABLE', unit: 'piece', purchasePrice: '0', sellingPrice: '', reorderLevel: '0' });
   const [busy, setBusy] = useState(false);
@@ -14,7 +14,7 @@ export default function ProductCreate({ token, lang, onCancel, onCreated }) {
     try {
       await apiRequest('/api/inventory/products', {
         token, method: 'POST',
-        body: { ...form, purchasePrice: Number(form.purchasePrice), sellingPrice: form.sellingPrice === '' ? null : Number(form.sellingPrice), reorderLevel: Number(form.reorderLevel) }
+        body: { ...form, purchasePrice: canWriteCosts ? Number(form.purchasePrice) : 0, sellingPrice: canWriteCosts && form.sellingPrice !== '' ? Number(form.sellingPrice) : null, reorderLevel: Number(form.reorderLevel) }
       });
       onCreated();
     } catch (e) { setError(e.message || 'Request failed'); }
@@ -29,8 +29,8 @@ export default function ProductCreate({ token, lang, onCancel, onCreated }) {
       <label>{ar ? 'الاسم بالإنجليزية' : 'English name'}<input required maxLength="160" value={form.nameEn} onChange={e => update('nameEn', e.target.value)} /></label>
       <label>{ar ? 'الفئة' : 'Category'}<select value={form.category} onChange={e => update('category', e.target.value)}><option value="MEDICATION">{ar ? 'دواء' : 'Medication'}</option><option value="CONSUMABLE">{ar ? 'مستهلك طبي' : 'Consumable'}</option><option value="OTHER">{ar ? 'أخرى' : 'Other'}</option></select></label>
       <label>{ar ? 'وحدة القياس' : 'Unit'}<input required maxLength="30" value={form.unit} onChange={e => update('unit', e.target.value)} /></label>
-      <label>{ar ? 'تكلفة الشراء الافتراضية (جنيه)' : 'Default purchase cost (EGP)'}<input required type="number" min="0" step="0.01" value={form.purchasePrice} onChange={e => update('purchasePrice', e.target.value)} /></label>
-      <label>{ar ? 'سعر البيع (جنيه)' : 'Selling price (EGP)'}<input type="number" min="0" step="0.01" value={form.sellingPrice} onChange={e => update('sellingPrice', e.target.value)} /></label>
+      {canWriteCosts&&<><label>{ar ? 'تكلفة الشراء الافتراضية (جنيه)' : 'Default purchase cost (EGP)'}<input required type="number" min="0" step="0.01" value={form.purchasePrice} onChange={e => update('purchasePrice', e.target.value)} /></label>
+      <label>{ar ? 'سعر البيع (جنيه)' : 'Selling price (EGP)'}<input type="number" min="0" step="0.01" value={form.sellingPrice} onChange={e => update('sellingPrice', e.target.value)} /></label></>}
       <label>{ar ? 'حد إعادة الطلب' : 'Reorder level'}<input type="number" min="0" step="0.001" value={form.reorderLevel} onChange={e => update('reorderLevel', e.target.value)} /></label>
     </div>
     {error && <div className="error">{error}</div>}
