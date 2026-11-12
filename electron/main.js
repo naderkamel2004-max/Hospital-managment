@@ -243,7 +243,7 @@ process.on('unhandledRejection', reason => log('FATAL', 'Unhandled promise rejec
 app.whenReady().then(async () => {
   try {
     fs.mkdirSync(userData, { recursive: true });
-    log('INFO', 'Application startup. packaged=' + isPackaged + ', appPath=' + app.getAppPath() + ', resources=' + resources);
+    log('INFO', 'Application startup. packaged=' + isPackaged + ', appPath=' + app.getAppPath() + ', resources=' + resources + ', userData=' + userData);
     await createStartupWindow();
     await setStatus('Checking local files…', 'Preparing the hospital system.');
     const databaseUrl = await startDatabase();
