@@ -11,6 +11,7 @@ const email = `ci-${suffix}@example.test`;
 const password = 'CI-Only-Strong-Password-2026!';
 let role;
 let permission;
+let operationsPermission;
 let user;
 let accessToken;
 
@@ -22,6 +23,8 @@ before(async () => {
     code: `ci.test.${suffix}`, description: 'Temporary permission used by CI integration tests'
   }});
   await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id }});
+  operationsPermission = await prisma.permission.create({ data: { code: 'operations.read', description: 'Read operations for analytics integration test' }});
+  await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: operationsPermission.id }});
   user = await prisma.user.create({ data: {
     email, fullName: 'CI Integration User', passwordHash: await bcrypt.hash(password, 4), roleId: role.id
   }});
@@ -31,6 +34,7 @@ after(async () => {
   if (user) await prisma.user.deleteMany({ where: { id: user.id }});
   if (role) await prisma.role.deleteMany({ where: { id: role.id }});
   if (permission) await prisma.permission.deleteMany({ where: { id: permission.id }});
+  if (operationsPermission) await prisma.permission.deleteMany({ where: { id: operationsPermission.id }});
   await prisma.$disconnect();
 });
 
@@ -49,6 +53,11 @@ test('login, live permission revocation, and account lockout are enforced', asyn
   const me = await request(app).get('/api/me')
     .set('Authorization', `Bearer ${accessToken}`).expect(200);
   assert.ok(me.body.user.permissions.includes(permission.code));
+
+  // Exercises the analytics query with a non-admin user and no resource scopes.
+  const analytics = await request(app).get('/api/operations/analytics')
+    .set('Authorization', `Bearer ${accessToken}`).expect(200);
+  assert.equal(analytics.body.summary.operations, 0);
 
   await prisma.rolePermission.delete({ where: {
     roleId_permissionId: { roleId: role.id, permissionId: permission.id }
