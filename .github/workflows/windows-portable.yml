@@ -33,6 +33,17 @@ jobs:
         run: |
           npm install
           npx prisma generate
+          $migrationFiles = Get-ChildItem "prisma/migrations" -Filter "migration.sql" -Recurse -ErrorAction SilentlyContinue
+          if (-not $migrationFiles) {
+            $migrationDir = "prisma/migrations/20261112000000_initial"
+            New-Item -ItemType Directory -Force -Path $migrationDir | Out-Null
+            Write-Host "No committed Prisma migrations found; generating the initial migration from schema.prisma."
+            & node "node_modules/prisma/build/index.js" migrate diff --from-empty --to-schema-datamodel "prisma/schema.prisma" --script |
+              Set-Content -Path (Join-Path $migrationDir "migration.sql") -Encoding utf8
+            if ($LASTEXITCODE -ne 0) { throw "Could not generate the initial Prisma migration." }
+            if ((Get-Item (Join-Path $migrationDir "migration.sql")).Length -eq 0) { throw "Generated Prisma migration is empty." }
+            Set-Content -Path "prisma/migrations/migration_lock.toml" -Value 'provider = "postgresql"' -Encoding utf8
+          }
           npm prune --omit=dev
           if (-not (Test-Path "node_modules\\prisma\\build\\index.js")) {
             throw "Prisma CLI is missing from the backend production dependencies after npm prune."
