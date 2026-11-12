@@ -10,6 +10,7 @@ const resources = process.resourcesPath;
 const isPackaged = app.isPackaged;
 const serverRoot = isPackaged ? path.join(resources, 'server') : path.resolve(here, '../server');
 const postgresRoot = isPackaged ? path.join(resources, 'postgres') : '';
+const bundledNode = isPackaged ? path.join(resources, 'node', 'node.exe') : process.execPath;
 const dataRoot = path.join(app.getPath('userData'), 'database');
 const port = 4000;
 let postgres;
@@ -19,9 +20,9 @@ let shuttingDown = false;
 
 function runNodeScript(script, args, env) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [script, ...args], {
+    const child = spawn(bundledNode, [script, ...args], {
       cwd: serverRoot,
-      env: { ...process.env, ...env, ELECTRON_RUN_AS_NODE: '1' },
+      env: { ...process.env, ...env },
       windowsHide: true,
       stdio: 'pipe'
     });
