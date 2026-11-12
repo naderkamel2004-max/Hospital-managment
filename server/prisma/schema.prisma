@@ -60,6 +60,7 @@ model Permission {
   code String @unique
   description String?
   roles RolePermission[]
+  userPermissions UserPermission[]
 }
 model RolePermission {
   roleId String
