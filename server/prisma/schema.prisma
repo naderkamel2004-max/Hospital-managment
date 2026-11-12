@@ -191,6 +191,7 @@ model StockItem {
   product Product @relation(fields: [productId], references: [id])
   batchNo String
   expiryDate DateTime?
+  unitCost Decimal @db.Decimal(14,2)
   quantity Decimal @db.Decimal(12,3)
   @@unique([productId, batchNo])
   @@index([expiryDate])
