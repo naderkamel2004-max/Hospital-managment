@@ -39,8 +39,11 @@ patientsRouter.get('/', requirePermission('patients.read'), async (req,res,next)
 });
 patientsRouter.get('/:id', requirePermission('patients.read'), async(req,res,next)=>{
   try {
-    const patient=await prisma.patient.findUnique({where:{id:req.params.id},select:{...select,appointments:{orderBy:{startsAt:'desc'},take:10,select:{id:true,startsAt:true,status:true,reason:true,doctor:{select:{fullName:true}},department:{select:{nameAr:true,nameEn:true}}}},encounters:{orderBy:{startedAt:'desc'},take:10,select:{id:true,startedAt:true,status:true,diagnosis:true}}}});
+    const patient=await prisma.patient.findUnique({where:{id:req.params.id},select:{...select,appointments:{orderBy:{startsAt:'desc'},take:10,select:{id:true,startsAt:true,status:true,reason:true,doctor:{select:{fullName:true}},department:{select:{nameAr:true,nameEn:true}}}},encounters:{orderBy:{startedAt:'desc'},take:10,select:{id:true,startedAt:true,status:true,diagnosis:true}},operations:{orderBy:{scheduledAt:'desc'},take:50,include:{doctor:{select:{id:true,fullName:true}},operationType:{select:{nameAr:true,nameEn:true}},items:true}}}});
     if(!patient) return res.status(404).json({error:'Patient not found'});
+    if(req.user.role!=='SUPER_ADMIN'&&!req.user.permissions.includes('operations.costs.read')){
+      patient.operations=patient.operations.map(({totalCost,consumablesCost,medicationsCost,otherCost,...operation})=>({...operation,items:operation.items.map(({purchaseUnitPrice,sellingUnitPrice,lineCost,...line})=>line)}));
+    }
     res.json({item:patient});
   }catch(error){next(error);}
 });
