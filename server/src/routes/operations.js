@@ -67,12 +67,7 @@ operationsRouter.get('/analytics',requirePermission('operations.read'),async(req
  const where={scheduledAt:{gte:from,lte:to},status:{not:'CANCELLED'}};
  if(typeof req.query.doctorId==='string')where.doctorId=req.query.doctorId;
  if(typeof req.query.operationTypeId==='string')where.operationTypeId=req.query.operationTypeId;
- if(req.user.role!=='SUPER_ADMIN'){
-  const doctorScopes=req.user.scopes.filter(x=>x.resource==='doctor').map(x=>x.resourceId);
-  const patientScopes=req.user.scopes.filter(x=>x.resource==='patient').map(x=>x.resourceId);
-  if(doctorScopes.length)where.doctorId={in:doctorScopes};
-  if(patientScopes.length)where.patientId={in:patientScopes};
- }
+ const scopedWhere=combineWhere(where,operationScopeWhere(req.user));
  const rows=await prisma.operation.findMany({where:scopedWhere,select:{id:true,scheduledAt:true,totalCost:true,consumablesCost:true,medicationsCost:true,doctor:{select:{id:true,fullName:true}},operationType:{select:{id:true,nameAr:true,nameEn:true,isDelivery:true,isCesarean:true}},items:{select:{itemNameSnapshot:true,quantity:true,lineCost:true}}},take:10000});
  const byMonth=new Map(),byType=new Map(),byDoctor=new Map(),byItem=new Map();
  let totalCost=0,consumablesCost=0,medicationsCost=0,cesareanCount=0,naturalDeliveryCount=0;
