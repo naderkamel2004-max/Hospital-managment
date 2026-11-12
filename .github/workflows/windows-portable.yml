@@ -64,7 +64,7 @@ jobs:
           New-LocalUser -Name $testUser -Password $testPassword -AccountNeverExpires -PasswordNeverExpires | Out-Null
           $credential = [System.Management.Automation.PSCredential]::new("$env:COMPUTERNAME\$testUser", $testPassword)
           $testProfile = Join-Path $env:SystemDrive "Users\$testUser"
-          $testData = Join-Path $testProfile "AppData\Roaming\Hospital Management"
+          $testData = Join-Path $testProfile "AppData\Roaming\HMS-Smoke"
           # Let the standard account create its own directory so its ACLs are correct.
           $process = $null
           try {
