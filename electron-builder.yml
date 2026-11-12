@@ -1,6 +1,7 @@
 appId: com.hospitalmanagement.desktop
 productName: Hospital Management
 asar: true
+disableDefaultIgnoredFiles: true
 directories:
   output: dist-electron
 files:
